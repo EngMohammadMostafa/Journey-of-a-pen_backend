@@ -9,17 +9,12 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-W
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
-
-// الكود الحالي يبقى كما هو...
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
-
-// ... باقي الكود الحالي
-
-// ... باقي الكود الحالي
+use App\Http\Controllers\QuoteController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -42,6 +37,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [UserController::class, 'getCurrentUser']);      // الحصول على بياناتي
         Route::put('/me', [UserController::class, 'updateCurrentUser']);   // تحديث بياناتي
     });
+
+    // 📖 الاقتباسات (لجميع المستخدمين المسجلين)
+    Route::get('/quotes', [QuoteController::class, 'index']);
+    Route::post('/quotes', [QuoteController::class, 'store']);
+    // ⚠️ لاحظي: Route::delete تم نقله للأدمن فقط
 });
 
 // 🔐 routes الإداري (تتطلب توكن + صلاحية أدمن)
@@ -54,6 +54,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::delete('/{id}', [AdminController::class, 'deleteUser']);    // حذف مستخدم
     });
     
+    // 🗑️ إدارة الاقتباسات - للإدمن فقط
+    Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']);
 });
 
 // 🌐 route أساسي للتحقق
