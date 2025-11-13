@@ -1,67 +1,127 @@
 <?php
 
-// حل CORS السريع - أضيفي هذا الكود في الأعلى
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-
-// التعامل مع طلبات OPTIONS - بشكل آمن
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    exit(0);
-}
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\QuoteController;
+
+use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\AnswerController;
+use App\Http\Controllers\PurchasingController;
+use App\Http\Controllers\UserBookAnswerController;
+use App\Http\Controllers\PuyController;
+use App\Http\Controllers\RewardController;
+use App\Http\Controllers\RepointController;
+use App\Http\Controllers\BookController;       // تأكد أن BookController موجود
+use App\Http\Controllers\PaymentController;    // سنستخدمه لاحقًا لبدء جلسة Stripe (إنشائه لاحقًا)
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
+|
+| هنا عرفنا كل مسارات الـ API المتعلقة بالأسئلة/الأجوبة، الشراء، الدفع، الجوائز.
+| جميع المسارات داخل المجموعة محمية بـ auth:sanctum باستثناء Webhook للبايمنت.
+|
 */
 
-// 🔓 routes لا تتطلب توكن (مفتوحة)
-Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);   // التسجيل
-    Route::post('/login', [AuthController::class, 'login']);         // الدخول 
+// -------------------------
+// Routes التي تتطلب توكن
+// -------------------------
+Route::middleware(['auth:sanctum'])->group(function () {
+
+    // -------------------------
+    // إدارة الأسئلة (Admin only)
+    // -------------------------
+    // إنشاء سؤال لكتاب (للأدمن)
+    Route::post('/admin/books/{bookId}/questions', [QuestionController::class,'store'])->middleware('admin');
+
+    // تعديل سؤال (للأدمن)
+    Route::put('/admin/questions/{id}', [QuestionController::class,'update'])->middleware('admin');
+
+    // حذف سؤال (للأدمن)
+    Route::delete('/admin/questions/{id}', [QuestionController::class,'destroy'])->middleware('admin');
+
+
+    // -------------------------
+    // إدارة خيارات الأسئلة (Admin only)
+    // -------------------------
+    // إضافة خيار لسؤال
+    Route::post('/admin/questions/{questionId}/answers', [AnswerController::class,'store'])->middleware('admin');
+
+    // تعديل خيار
+    Route::put('/admin/answers/{id}', [AnswerController::class,'update'])->middleware('admin');
+
+    // حذف خيار
+    Route::delete('/admin/answers/{id}', [AnswerController::class,'destroy'])->middleware('admin');
+
+
+    // -------------------------
+    // عرض الأسئلة للمستخدم (بعد التأكد من امتلاك الكتاب)
+    // -------------------------
+    Route::get('/books/{bookId}/questions', [QuestionController::class,'getByBook']);
+
+
+    // -------------------------
+    // جلسات الأسئلة للمستخدم (Start / Submit / Exit)
+    // - start: يتم استدعاؤه عند الضغط على "Accept" لبدء الجلسة
+    // - submit: إرسال جميع الإجابات دفعة واحدة
+    // - exit: الخروج (لا يحفظ إجابات جزئية)
+    // -------------------------
+    Route::post('/books/{bookId}/session/start', [UserBookAnswerController::class,'startSession']);
+    Route::post('/books/{bookId}/session/submit', [UserBookAnswerController::class,'submitAnswers']);
+    Route::post('/books/{bookId}/session/exit', [UserBookAnswerController::class,'exitSession']);
+
+
+    // -------------------------
+    // عمليات الشراء (Purchasing)
+    // - index: قائمة المشتريات (للمستخدم أو للأدمن)
+    // - show: تفاصيل عملية شراء
+    // - create: إنشاء عملية شراء داخل القاعدة بعد تأكيد الدفع (يتم استدعاؤها بعد نجاح الدفع)
+    // -------------------------
+    Route::get('/purchases', [PurchasingController::class,'index']);
+    Route::get('/purchases/{id}', [PurchasingController::class,'show']);
+    Route::post('/purchases/create', [PurchasingController::class,'createPurchase']); // يستدعى بعد تأكيد الدفع
+
+
+    // -------------------------
+    // إدارة المدفوعات (Puy)
+    // - عرض دفعات المستخدم أو كل الدفعات للأدمن
+    // - Webhook للـ Stripe (موجود خارج مجموعة auth, انظر أسفل)
+    // -------------------------
+    Route::get('/payments', [PuyController::class,'index']);
+
+
+    // -------------------------
+    // الجوائز والنقاط
+    // - الأدمن ينشئ الجوائز والسجلات (repoint)
+    // - المستخدم يعرض الجوائز ويستبدل النقاط (redeem)
+    // -------------------------
+    Route::post('/admin/rewards', [RewardController::class,'store'])->middleware('admin');
+    Route::get('/rewards', [RewardController::class,'index']);
+    Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']);
+
+    Route::post('/admin/repoints', [RepointController::class,'store'])->middleware('admin');
+    Route::get('/repoints', [RepointController::class,'index'])->middleware('admin');
+
+
+    // -------------------------
+    // إضافات مفيدة (aliases) لتوافق ملف الـAPI المطلوب
+    // -------------------------
+    // عرض كل الكتب (pagination) - يستخدمه الـ frontend لعرض قائمة الكتب
+    Route::get('/books', [BookController::class, 'index']);
+
+    // عرض كتاب واحد مع تفاصيله
+    Route::get('/books/{id}', [BookController::class, 'show']);
+
+    // بدء عملية الشراء (سيقوم frontend باستدعاء هذا المسار لطلب جلسة دفع أو رابط Checkout)
+    // ملاحظة: يمكن أن ننقله لاحقاً إلى مسار /payments/initiate أو إلى PaymentController
+    Route::post('/books/{id}/purchase', [PaymentController::class, 'initiatePurchase']);
 });
 
-// 🔐 routes تتطلب توكن (محمية)
-Route::middleware('auth:sanctum')->group(function () {
-    // الخروج
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    
-    // بيانات المستخدم
-    Route::prefix('users')->group(function () {
-        Route::get('/me', [UserController::class, 'getCurrentUser']);      // الحصول على بياناتي
-        Route::put('/me', [UserController::class, 'updateCurrentUser']);   // تحديث بياناتي
-    });
 
-    // 📖 الاقتباسات (لجميع المستخدمين المسجلين)
-    Route::get('/quotes', [QuoteController::class, 'index']);
-    Route::post('/quotes', [QuoteController::class, 'store']);
-    // ⚠️ لاحظي: Route::delete تم نقله للأدمن فقط
-});
+// -------------------------
+// Webhook للمدفوعات (Stripe)
+// ملاحظة مهمة: هذا المسار يجب أن يكون عام (بدون auth) لأن Stripe سيرسله من خوادمها.
+// يجب أيضاً التحقق من التوقيع داخل الدالة (Stripe signature) لضمان الأمان.
+// -------------------------
+Route::post('/payments/webhook', [PuyController::class,'storeFromWebhook']);
 
-// 🔐 routes الإداري (تتطلب توكن + صلاحية أدمن)
-Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
-    
-    // إدارة المستخدمين
-    Route::prefix('users')->group(function () {
-        Route::get('/', [AdminController::class, 'getAllUsers']);           // الحصول على جميع المستخدمين
-        Route::put('/{id}', [AdminController::class, 'updateUser']);       // تحديث مستخدم
-        Route::delete('/{id}', [AdminController::class, 'deleteUser']);    // حذف مستخدم
-    });
-    
-    // 🗑️ إدارة الاقتباسات - للإدمن فقط
-    Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']);
-});
-
-// 🌐 route أساسي للتحقق
-Route::get('/', function () {
-    return response()->json([
-        'message' => 'مرحباً بكم في منصة القراءة التحفيزية',
-        'version' => '1.0'
-    ]);
-});
