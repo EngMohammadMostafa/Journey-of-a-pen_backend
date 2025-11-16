@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -40,7 +39,6 @@ class ReadingPlatformUser extends Authenticatable
 
     /**
      * 🔗 العلاقة مع جدول purchasing (M:N)
-     * كل مستخدم يمكن أن يقوم بعدة عمليات شراء
      */
     public function purchases()
     {
@@ -50,12 +48,13 @@ class ReadingPlatformUser extends Authenticatable
 
     /**
      * 🔗 العلاقة مع الكتب (M:N)
-     * كل مستخدم يمكن أن يحب أو يمتلك عدة كتب
+     * ملاحظة: أضفنا withPivot('liked','owned','downloaded_at')
+     * لكي يظهر في JSON حقول الpivot هذه (تُستخدم في البروفايل لتمييز الكتب المحفوظة).
      */
     public function books()
     {
         return $this->belongsToMany(Book::class, 'book_user', 'user_id', 'book_id')
-                    ->withPivot('liked')
+                    ->withPivot('liked', 'owned', 'downloaded_at')
                     ->withTimestamps();
     }
 }

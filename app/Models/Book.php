@@ -21,9 +21,13 @@ class Book extends Model
         return $this->belongsTo(Category::class);
     }
 
+    /**
+     * العلاقة مع المستخدمين — نُعيد pivot fields أيضاً
+     */
     public function users()
     {
         return $this->belongsToMany(ReadingPlatformUser::class, 'book_user')
+                    ->withPivot('liked', 'owned', 'downloaded_at')
                     ->withTimestamps();
     }
 
