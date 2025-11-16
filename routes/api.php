@@ -13,6 +13,7 @@ use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\UserBookAnswerController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\RepointController;
+use App\Http\Controllers\CategoryController; // <--- أضفنا هذا
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +45,13 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+/* ------------------------------
+   مسارات عامة للأقسام (Categories)
+   - index, show متاحة للعامة (يمكن تقييدها لاحقاً)
+--------------------------------- */
+Route::get('/categories', [CategoryController::class, 'index']);       // جلب كل الأقسام
+Route::get('/categories/{id}', [CategoryController::class, 'show']);  // جلب قسم واحد
+
 /* -------------------------------------
    مسارات تحتاج auth:sanctum (توكين)
 -------------------------------------- */
@@ -68,6 +76,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
        👑 مسارات الأدمن
     -------------------------------- */
     Route::prefix('admin')->middleware('admin')->group(function () {
+
+        // إدارة الأقسام (Admin)
+        Route::post('/categories', [CategoryController::class, 'store']); // إنشاء قسم جديد
+
+        // إنشاء كتاب في قسم معين (Admin)
+        Route::post('/categories/{categoryId}/books', [BookController::class, 'store']);
 
         // إدارة المستخدمين
         Route::get('/users', [AdminController::class, 'getAllUsers']);
