@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\URL;
 class BookController extends Controller
 {
     /**
-     * 🟢 عرض جميع الأقسام والكتب فيها
+     * 🟢 عرض كل الأقسام مع الكتب (موجودة عندك)
      */
     public function getCategories()
     {
@@ -28,7 +28,7 @@ class BookController extends Controller
     }
 
     /**
-     * 🟢 عرض كتب قسم محدد
+     * 🟢 عرض كتب قسم محدد (موجودة)
      */
     public function getBooksByCategory($categoryId)
     {
@@ -42,6 +42,59 @@ class BookController extends Controller
             'success' => true,
             'category' => $category->name,
             'books' => $category->books
+        ]);
+    }
+
+    /**
+     * عرض كل الكتب (API: GET /api/books)
+     * يعيد قائمة الكتب مع علاقة القسم (يمكن إضافة pagination لاحقاً)
+     */
+    public function index()
+    {
+        $books = Book::with('category')->get();
+
+        return response()->json([
+            'success' => true,
+            'books' => $books
+        ]);
+    }
+
+    /**
+     * تفاصيل كتاب محدد (API: GET /api/books/{id})
+     */
+    public function show($id)
+    {
+        $book = Book::with('category')->find($id);
+
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'book' => $book
+        ]);
+    }
+
+    /**
+     * جلب الكتب المملوكة للمستخدم (API: GET /api/me/books)
+     * يقرأ جدول book_user حيث owned = 1
+     */
+    public function getUserBooks(Request $request)
+    {
+        $user = $request->user();
+
+        $owned = DB::table('book_user')
+            ->where('user_id', $user->id)
+            ->where('owned', 1)
+            ->pluck('book_id')
+            ->toArray();
+
+        $books = Book::whereIn('id', $owned)->get();
+
+        return response()->json([
+            'success' => true,
+            'books' => $books
         ]);
     }
 
@@ -200,7 +253,6 @@ class BookController extends Controller
 
     /**
      * 🟢 تنزيل مباشر - (قد لا تستخدمه إن اعتمدت على signed URL)
-     * لاحقاً قد نحذف هذا أو نتركه كمثال.
      */
     public function downloadBook(Request $request, $bookId)
     {
@@ -231,7 +283,7 @@ class BookController extends Controller
     }
 
     /**
-     * 🔒 التحقق من شراء الكتاب
+     * 🔒 التحقق من شراء الكتاب (مساعدة داخلية)
      */
     private function checkPurchase($userId, $bookId)
     {
@@ -242,7 +294,7 @@ class BookController extends Controller
     }
 
     /**
-     * ❤️ تسجيل إعجاب بالكتاب
+     * ❤️ تسجيل/إلغاء إعجاب بالكتاب
      */
     public function toggleLike($bookId)
     {
@@ -269,6 +321,53 @@ class BookController extends Controller
             'success' => true,
             'message' => $message,
             'likes_count' => $book->number_of_likes
+        ]);
+    }
+
+    /**
+     * (Admin) تعديل معلومات كتاب
+     * Route: PUT /api/books/{id}
+     */
+    public function update(Request $request, $id)
+    {
+        $book = Book::find($id);
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
+        $data = $request->only(['title','author','description','price','book_type','discount_rate','category_id']);
+
+        $book->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث معلومات الكتاب',
+            'book' => $book
+        ]);
+    }
+
+    /**
+     * (Admin) حذف كتاب
+     * Route: DELETE /api/books/{id}
+     * يحذف الملف من التخزين إن وُجد ثم يحذف السجل
+     */
+    public function destroy($id)
+    {
+        $book = Book::find($id);
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
+        // حذف الملف من التخزين لو موجود
+        if ($book->file_path && Storage::disk('local')->exists($book->file_path)) {
+            Storage::disk('local')->delete($book->file_path);
+        }
+
+        $book->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حذف الكتاب'
         ]);
     }
 }

@@ -13,22 +13,14 @@ use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\UserBookAnswerController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\RepointController;
-use App\Http\Controllers\CategoryController; // <--- أضفنا هذا
+use App\Http\Controllers\CategoryController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes (بدون Stripe)
+| API Routes
 |--------------------------------------------------------------------------
 |
-| هذا الملف يحتوي على:
-| 🔐 التسجيل/الدخول
-| 👤 بيانات المستخدم
-| 📚 الكتب (بما فيها توليد رابط التحميل المؤقت)
-| ❓ الأسئلة والأجوبة
-| 📝 جلسات الإجابة (start / answer / submit / exit)
-| 💬 الاقتباسات
-| 👑 مهام الأدمن
-| 🎁 الجوائز والنقاط
+| هنا المسارات المتعلقة بالمشروع: auth, users, books, questions, admin, rewards ...
 |
 */
 
@@ -39,46 +31,40 @@ Route::get('/', function () {
     return response()->json(['message' => 'API is running']);
 });
 
-// تسجيل + تسجيل دخول
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-/* ------------------------------
-   مسارات عامة للأقسام (Categories)
-   - index, show متاحة للعامة (يمكن تقييدها لاحقاً)
---------------------------------- */
-Route::get('/categories', [CategoryController::class, 'index']);       // جلب كل الأقسام
-Route::get('/categories/{id}', [CategoryController::class, 'show']);  // جلب قسم واحد
+/* الأقسام متاحة للعامة */
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/categories/{id}', [CategoryController::class, 'show']);
 
-/* -------------------------------------
-   مسارات تحتاج auth:sanctum (توكين)
--------------------------------------- */
+/* --------------------------------------------------------------------------------
+   المسارات التي تحتاج مصادقة (auth:sanctum) — عدّل الـ middleware إذا تستخدم passport
+   -------------------------------------------------------------------------------- */
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    /* -------------------------------
-       🔐 مصادقة المستخدم
-    -------------------------------- */
+    // مصادقة المستخدم
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
+    // بيانات المستخدم
     Route::get('/users/me', [UserController::class, 'getCurrentUser']);
     Route::put('/users/me', [UserController::class, 'updateCurrentUser']);
     Route::post('/users/me/change-password', [UserController::class, 'changePassword']);
 
-    /* -------------------------------
-       💬 الاقتباسات (مستخدم مسجّل)
-    -------------------------------- */
+    // اقتباسات
     Route::get('/quotes', [QuoteController::class, 'index']);
     Route::post('/quotes', [QuoteController::class, 'store']);
 
     /* -------------------------------
-       👑 مسارات الأدمن
+       👑 مسارات الأدمن (تتطلب middleware admin)
+       تأكد أن middleware 'admin' معرفة في Kernel.php وتتحقق من صلاحية المستخدم.
     -------------------------------- */
     Route::prefix('admin')->middleware('admin')->group(function () {
 
-        // إدارة الأقسام (Admin)
-        Route::post('/categories', [CategoryController::class, 'store']); // إنشاء قسم جديد
+        // إدارة الأقسام
+        Route::post('/categories', [CategoryController::class, 'store']);
 
         // إنشاء كتاب في قسم معين (Admin)
         Route::post('/categories/{categoryId}/books', [BookController::class, 'store']);
@@ -88,7 +74,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/users/{id}', [AdminController::class, 'updateUser']);
         Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
 
-        // حذف اقتباس
+        // إدارة الاقتباسات
         Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']);
 
         // إدارة الأسئلة (Admin)
@@ -101,7 +87,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/answers/{id}', [AnswerController::class,'update']);
         Route::delete('/answers/{id}', [AnswerController::class,'destroy']);
 
-        // إدارة مثيرات النقاط / الجوائز (Admin)
+        // إدارة المكافأت/النقاط
         Route::post('/rewards', [RewardController::class,'store']);
         Route::post('/repoints', [RepointController::class,'store']);
         Route::get('/repoints', [RepointController::class,'index']);
@@ -110,23 +96,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     /* -------------------------------
        📚 الكتب (مستخدم مسجّل)
     -------------------------------- */
-    Route::get('/books', [BookController::class, 'index']);   // قائمة الكتب (pagination)
-    Route::get('/books/{id}', [BookController::class, 'show']); // تفاصيل كتاب
+    Route::get('/books', [BookController::class, 'index']);        // جلب كل الكتب
+    Route::get('/books/{id}', [BookController::class, 'show']);   // تفاصيل كتاب
+    Route::get('/me/books', [BookController::class, 'getUserBooks']); // كتب المملوكة للمستخدم
 
-    // توليد رابط تحميل مؤقت (يُطلب بعد التحقق من امتلاك/تحميل الكتاب)
+    // توليد رابط تحميل مؤقت بعد التحقق من الملكية
     Route::post('/books/{id}/download', [BookController::class, 'generateDownloadLink']);
 
     /* -------------------------------
-       ❓ عرض الأسئلة الخاصة بكتاب
+       ❓ الأسئلة الخاصة بالكتاب
     -------------------------------- */
     Route::get('/books/{bookId}/questions', [QuestionController::class, 'getBookQuestions']);
 
     /* -------------------------------
-       📝 جلسات الإجابة (Start / Answer / Submit / Exit)
-       - start: يعيد الثلاثة أسئلة دفعة واحدة عند الضغط على Accept
-       - answer: حفظ إجابة واحدة فورًا (recordAnswer)
-       - submit: إنهاء الجلسة (Finish) بعد الإجابة على كل الأسئلة
-       - exit: الخروج إذا لم يبدأ المستخدم بالإجابة على أي سؤال
+       📝 جلسات الإجابة (start / answer / submit / exit)
+       مسارات مرتبطة بإدارة جلسات إجابة المستخدم على أسئلة الكتاب
     -------------------------------- */
     Route::post('/books/{bookId}/session/start', [UserBookAnswerController::class,'startSession']);
     Route::post('/books/{bookId}/session/answer', [UserBookAnswerController::class,'recordAnswer']);
@@ -134,16 +118,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/books/{bookId}/session/exit', [UserBookAnswerController::class,'exitSession']);
 
     /* -------------------------------
-       🎁 الجوائز
+       🎁 الجوائز والنقاط
     -------------------------------- */
     Route::get('/rewards', [RewardController::class,'index']);
     Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']);
 });
 
 /* ------------------------------
-   مسارات عامة (بدون مصادقة)
+   رابط عام لخدمة الملف (signed URL)
+   هذا الـ route عام لأن الرابط الموقّع قد يُستدعى بدون توكن.
 --------------------------------- */
-
-// رابط عام موقع (signed) لخدمة الملف — يجب أن يكون عامًا لأن الرابط قد يزور من دون توكن
 Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
      ->name('books.serveDownload');
