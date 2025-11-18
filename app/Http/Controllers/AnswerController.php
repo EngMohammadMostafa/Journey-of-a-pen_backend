@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Validator;
 
 class AnswerController extends Controller
 {
-    // Admin: إضافة خيار لسؤال
+    /**
+     * Admin: إضافة إجابة لسؤال
+     */
     public function store(Request $request, $questionId)
     {
         $validator = Validator::make($request->all(), [
@@ -31,7 +33,9 @@ class AnswerController extends Controller
         return response()->json(['message'=>'تم إنشاء خيار','answer'=>$answer], 201);
     }
 
-    // Admin: تعديل خيار
+    /**
+     * Admin: تعديل إجابة
+     */
     public function update(Request $request, $id)
     {
         $answer = Answer::find($id);
@@ -49,11 +53,14 @@ class AnswerController extends Controller
         return response()->json(['message'=>'تم تعديل الخيار','answer'=>$answer]);
     }
 
-    // Admin: حذف خيار
+    /**
+     * Admin: حذف إجابة
+     */
     public function destroy($id)
     {
         $answer = Answer::find($id);
         if (!$answer) return response()->json(['message'=>'الخيار غير موجود'], 404);
+
         $answer->delete();
         return response()->json(['message'=>'تم حذف الخيار']);
     }
