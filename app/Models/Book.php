@@ -38,6 +38,17 @@ class Book extends Model
     }
 
     /**
+     * إرجاع عدد الإعجابات الفعلي لهذا الكتاب
+     * يستخدم جدول pivot 'book_user' وحقل 'liked' (true/false)
+     * يمكنك استدعاءه كـ $book->likesCount()
+     */
+    public function likesCount()
+    {
+        // نستخدم علاقة الusers مع wherePivot لعدّ الإعجابات
+        return $this->users()->wherePivot('liked', true)->count();
+    }
+
+    /**
      * Cascade Delete: حذف كل ما يتعلق بالكتاب تلقائياً
      * عند حذف الكتاب نفسه:
      * 1️⃣ حذف جميع الأسئلة المرتبطة بالكتاب
@@ -59,6 +70,8 @@ class Book extends Model
             if ($book->file_path && Storage::disk('local')->exists($book->file_path)) {
                 Storage::disk('local')->delete($book->file_path);
             }
+
+            // ملاحظة: لا نحذف pivot rows يدوياً لأن Laravel سيهتم بها عند حذف الموديل
         });
     }
 }

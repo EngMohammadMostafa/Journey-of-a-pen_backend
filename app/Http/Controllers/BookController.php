@@ -49,19 +49,38 @@ class BookController extends Controller
 
     /**
      * عرض كل الكتب
+     * الآن نُعيد لكل كتاب حقل likes_count ليعرض في الواجهة مباشرة
      */
     public function index()
     {
+        // جلب الكتب مع القسم لتقليل الاستعلامات
         $books = Book::with('category')->get();
+
+        // نضيف likes_count لكل كتاب (حتى الواجهة تستقبل الرقم مباشرة)
+        $booksArray = $books->map(function($book) {
+            return [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'description' => $book->description,
+                'price' => $book->price,
+                'book_type' => $book->book_type,
+                'file_type' => $book->file_type,
+                'file_size' => $book->file_size,
+                'category' => $book->category->name ?? null,
+                'likes_count' => $book->likesCount(), // 🔥 العدد الكلي للإعجابات
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'books' => $books
+            'books' => $booksArray
         ]);
     }
 
     /**
      * تفاصيل كتاب محدد
+     * الآن يعيد likes_count أيضاً حتى يمكن عرض العدد عند فتح صفحة الكتاب
      */
     public function show($id)
     {
@@ -71,9 +90,54 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
+        // حساب عدد الإعجابات باستخدام pivot
+        $likesCount = $book->likesCount();
+
         return response()->json([
             'success' => true,
-            'book' => $book
+            'book' => [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'description' => $book->description,
+                'price' => $book->price,
+                'book_type' => $book->book_type,
+                'file_type' => $book->file_type,
+                'file_size' => $book->file_size,
+                'category' => $book->category->name ?? null,
+                'likes_count' => $likesCount // 🔥 هذا هو العدد الكلي للإعجابات
+            ]
+        ]);
+    }
+
+    /**
+     * مسار بديل/مخصص: إرجاع كتاب مع عدد الإعجابات (endpoint واضح للمطلوب)
+     * GET /api/books/{id}/with-likes
+     */
+    public function getBookWithLikes($id)
+    {
+        $book = Book::with('category')->find($id);
+
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
+        $likesCount = $book->likesCount();
+
+        return response()->json([
+            'success' => true,
+            'book' => [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'description' => $book->description,
+                'price' => $book->price,
+                'book_type' => $book->book_type,
+                'file_type' => $book->file_type,
+                'file_size' => $book->file_size,
+                'category' => $book->category->name ?? null,
+                'likes_count' => $likesCount
+            ]
         ]);
     }
 

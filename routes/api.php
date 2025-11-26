@@ -19,7 +19,7 @@ use App\Http\Controllers\CategoryController;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| هنا جميع المسارات المتعلقة بالمشروع: auth, users, books, questions, admin, rewards ...
+| جميع المسارات المتعلقة بالمشروع: auth, users, books, questions, admin, rewards ...
 | تم تقسيم المسارات حسب الحاجة: عامة، auth، admin.
 */
 
@@ -58,8 +58,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/quotes', [QuoteController::class, 'store']); // إضافة اقتباس
 
     // جلب الكتب
-    Route::get('/books', [BookController::class, 'index']);              // كل الكتب
-    Route::get('/books/{id}', [BookController::class, 'show']);         // تفاصيل كتاب
+    // ✅ تعديل: كل كتاب الآن يعيد likes_count ليظهر مباشرة في الواجهة
+    Route::get('/books', [BookController::class, 'index']);              // كل الكتب مع عدد الإعجابات
+    Route::get('/books/{id}', [BookController::class, 'show']);         // تفاصيل كتاب مع likes_count
+    Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); // endpoint مخصص للـ likes
     Route::get('/me/books', [BookController::class, 'getUserBooks']);   // كتب المستخدم المملوكة
 
     // تحميل كتاب مؤقت بعد التحقق من الملكية
@@ -122,6 +124,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
      ->name('books.serveDownload');
 
-
-
-     
+/*
+✅ ملاحظات مهمة:
+1. عند استخدام `/api/books` لكل كتاب ستجد الحقل `likes_count` جاهز للواجهة.
+2. عند فتح تفاصيل كتاب باستخدام `/api/books/{id}` ستجد أيضًا `likes_count`.
+3. إذا أردت مسار مخصص فقط للـ likes استخدم `/api/books/{id}/with-likes`.
+4. تأكد من إعداد CORS أو صلاحيات Sanctum إذا الواجهة frontend على دومين آخر.
+*/
