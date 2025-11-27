@@ -16,10 +16,11 @@ use App\Http\Controllers\RepointController;
 use App\Http\Controllers\CategoryController;
 
 /*
-|-------------------------------------------------------------------------- 
+|--------------------------------------------------------------------------
 | API Routes
-|-------------------------------------------------------------------------- 
-| جميع المسارات المتعلقة بالمشروع: auth, users, books, questions, admin, rewards ...
+|--------------------------------------------------------------------------
+| جميع المسارات المتعلقة بالمشروع:
+| auth, users, books, questions, admin, rewards ...
 | تم تقسيم المسارات حسب الحاجة: عامة، auth، admin.
 */
 
@@ -37,8 +38,8 @@ Route::prefix('auth')->group(function () {
 });
 
 // الأقسام متاحة للعامة
-Route::get('/categories', [CategoryController::class, 'index']);  // كل الأقسام
-Route::get('/categories/{id}', [CategoryController::class, 'show']); // تفاصيل قسم
+Route::get('/categories', [CategoryController::class, 'index']);      // عرض كل الأقسام
+Route::get('/categories/{id}', [CategoryController::class, 'show']); // عرض تفاصيل قسم معين
 
 /* ------------------------------
    مسارات تتطلب مصادقة (auth:sanctum)
@@ -48,20 +49,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // تسجيل الخروج
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-    // بيانات المستخدم
-    Route::get('/users/me', [UserController::class, 'getCurrentUser']); // معلومات المستخدم الحالي
-    Route::put('/users/me', [UserController::class, 'updateCurrentUser']); // تعديل بيانات المستخدم
+    // بيانات المستخدم الحالي
+    Route::get('/users/me', [UserController::class, 'getCurrentUser']);      // معلومات المستخدم الحالي
+    Route::put('/users/me', [UserController::class, 'updateCurrentUser']);   // تعديل بيانات المستخدم الحالي
     Route::post('/users/me/change-password', [UserController::class, 'changePassword']); // تغيير كلمة المرور
 
     // اقتباسات المستخدم
-    Route::get('/quotes', [QuoteController::class, 'index']); // كل الاقتباسات
-    Route::post('/quotes', [QuoteController::class, 'store']); // إضافة اقتباس
+    Route::get('/quotes', [QuoteController::class, 'index']);  // عرض كل الاقتباسات
+    Route::post('/quotes', [QuoteController::class, 'store']); // إضافة اقتباس جديد
 
     // جلب الكتب
-    Route::get('/books', [BookController::class, 'index']);              // كل الكتب مع عدد الإعجابات
-    Route::get('/books/{id}', [BookController::class, 'show']);         // تفاصيل كتاب مع likes_count
-    Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); // endpoint مخصص للـ likes
-    Route::get('/me/books', [BookController::class, 'getUserBooks']);   // كتب المستخدم المملوكة
+    Route::get('/books', [BookController::class, 'index']);                         // كل الكتب مع عدد الإعجابات
+    Route::get('/books/{id}', [BookController::class, 'show']);                     // تفاصيل كتاب
+    Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); // تفاصيل كتاب + عدد likes
+    Route::get('/me/books', [BookController::class, 'getUserBooks']);              // كتب المستخدم المملوكة
 
     // تحميل كتاب مؤقت بعد التحقق من الملكية
     Route::post('/books/{id}/download', [BookController::class, 'generateDownloadLink']);
@@ -69,18 +70,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // الأسئلة الخاصة بالكتاب (المستخدم العادي)
     Route::get('/books/{bookId}/questions', [QuestionController::class, 'getBookQuestions']);
 
-    // جلسات الإجابة (المستخدم العادي)
+    // جلسات الإجابة على الأسئلة
     Route::post('/books/{bookId}/session/start', [UserBookAnswerController::class,'startSession']);
     Route::post('/books/{bookId}/session/answer', [UserBookAnswerController::class,'recordAnswer']);
     Route::post('/books/{bookId}/session/submit', [UserBookAnswerController::class,'submitAnswers']);
     Route::post('/books/{bookId}/session/exit', [UserBookAnswerController::class,'exitSession']);
 
     // الجوائز والنقاط
-    Route::get('/rewards', [RewardController::class,'index']);
-    Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']);
+    Route::get('/rewards', [RewardController::class,'index']);           // عرض كل المكافآت
+    Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); // استبدال مكافأة
 
     /* -------------------------------
        👑 مسارات الأدمن (Admin)
+       - هذه المسارات محمية بميدلوير 'admin'
+       - الأدمن الوحيد يمكنه إنشاء مستخدمين عاديين فقط
     -------------------------------- */
     Route::prefix('admin')->middleware('admin')->group(function () {
 
@@ -88,33 +91,33 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/categories', [CategoryController::class, 'store']); // إنشاء قسم جديد
 
         // إدارة الكتب
-        Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); // إضافة كتاب
+        Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); // إضافة كتاب جديد
         Route::put('/books/{id}', [BookController::class, 'update']);                     // تعديل كتاب
         Route::delete('/books/{id}', [BookController::class, 'destroy']);                // حذف كتاب
 
         // إدارة المستخدمين
-        Route::get('/users', [AdminController::class, 'getAllUsers']);  // كل المستخدمين
-        Route::post('/users', [AdminController::class, 'createUser']);  // ✅ إضافة مستخدم جديد بواسطة الأدمن
-        Route::put('/users/{id}', [AdminController::class, 'updateUser']); // تعديل مستخدم
-        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); // حذف مستخدم
+        Route::get('/users', [AdminController::class, 'getAllUsers']);       // عرض كل المستخدمين
+        Route::post('/users', [AdminController::class, 'createUser']);       // إنشاء مستخدم جديد (دائمًا عادي)
+        Route::put('/users/{id}', [AdminController::class, 'updateUser']);   // تعديل بيانات مستخدم
+        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); // حذف مستخدم (لا يمكن حذف الأدمن الرئيسي)
 
         // إدارة الاقتباسات
         Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); // حذف اقتباس
 
-        // إدارة الأسئلة (Admin)
+        // إدارة الأسئلة
         Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); // إضافة سؤال
         Route::put('/questions/{id}', [QuestionController::class,'update']);          // تعديل سؤال
         Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       // حذف سؤال
 
-        // إدارة الإجابات (Admin)
-        Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); // إضافة إجابة للسؤال
-        Route::put('/answers/{id}', [AnswerController::class,'update']);                    // تعديل الإجابة
-        Route::delete('/answers/{id}', [AnswerController::class,'destroy']);                // حذف الإجابة
+        // إدارة الإجابات
+        Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); // إضافة إجابة
+        Route::put('/answers/{id}', [AnswerController::class,'update']);                    // تعديل إجابة
+        Route::delete('/answers/{id}', [AnswerController::class,'destroy']);                // حذف إجابة
 
-        // إدارة المكافأت/النقاط
+        // إدارة المكافآت/النقاط
         Route::post('/rewards', [RewardController::class,'store']);   // إضافة مكافأة
         Route::post('/repoints', [RepointController::class,'store']); // إضافة نقاط
-        Route::get('/repoints', [RepointController::class,'index']);  // عرض نقاط
+        Route::get('/repoints', [RepointController::class,'index']);  // عرض النقاط
     });
 });
 
@@ -122,4 +125,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
    رابط عام لخدمة الملفات (signed URL)
 --------------------------------- */
 Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
-     ->name('books.serveDownload');
+     ->name('books.serveDownload'); // رابط تحميل الكتاب مؤقتًا للمستخدم
