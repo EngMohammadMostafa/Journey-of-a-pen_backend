@@ -277,7 +277,7 @@ class UserBookAnswerController extends Controller
 
         if ($partialExists) {
             return response()->json([
-                'message' => 'لا يمكنك الخروج الآن - لقد بدأت بالإجابة على أحد الأسئلة، أكمل الجلسة أو احذف الإجابات الجزئية.'
+                'message' => 'لا يمكنك الخروج الآن لأنك بدأت بالإجابة على أحد الأسئلة، أكمل الجلسة الحالية أولاً'
             ], 403);
         }
 
