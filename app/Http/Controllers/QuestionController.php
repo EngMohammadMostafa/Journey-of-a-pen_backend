@@ -144,6 +144,52 @@ class QuestionController extends Controller
 
     /**
      * ------------------------------
+     * (ADMIN) جلب كل أسئلة كتاب مع الإجابات
+     * ------------------------------
+     * يظهر is_correct لكل إجابة
+     * Route: GET /api/admin/books/{bookId}/questions-with-answers
+     */
+    public function adminGetBookQuestionsWithAnswers($bookId)
+    {
+        $questions = Question::with('answers')
+            ->where('book_id', $bookId)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'questions' => $questions
+        ], 200);
+    }
+
+    /**
+     * ------------------------------
+     * (ADMIN) جلب سؤال محدد داخل كتاب مع الإجابات
+     * ------------------------------
+     * يظهر is_correct لكل إجابة
+     * Route: GET /api/admin/books/{bookId}/questions/{questionId}
+     */
+    public function adminShowQuestionForBook($bookId, $questionId)
+    {
+        $question = Question::with('answers')
+            ->where('book_id', $bookId)
+            ->where('id', $questionId)
+            ->first();
+
+        if (!$question) {
+            return response()->json([
+                'success' => false,
+                'message' => 'السؤال غير موجود'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'question' => $question
+        ], 200);
+    }
+
+    /**
+     * ------------------------------
      * (USER) إنهاء الجلسة + احتساب النقاط
      * ------------------------------
      * - يجب أن يجيب المستخدم على الأسئلة الثلاثة
@@ -181,10 +227,8 @@ class QuestionController extends Controller
 
         DB::beginTransaction();
         try {
-            // لو المستخدم أرسل الإجابات دفعة واحدة
             if (is_array($incomingAnswers) && count($incomingAnswers) > 0) {
 
-                // تحقق التحقق من الطلب
                 $validator = Validator::make($request->all(), [
                     'answers' => 'required|array',
                     'answers.*.question_id' => 'required|integer|exists:questions,id',
@@ -197,24 +241,20 @@ class QuestionController extends Controller
                 }
 
                 foreach ($incomingAnswers as $ans) {
-
                     $qId = (int)$ans['question_id'];
                     $aId = (int)$ans['answer_id'];
 
-                    // التأكد أن السؤال فعلاً ضمن الجلسة
                     if (!in_array($qId, $expectedQuestionIds, true)) {
                         DB::rollBack();
                         return response()->json(['message' => 'إرسال سؤال غير صالح للجلسة: ' . $qId], 422);
                     }
 
-                    // التأكد أن الإجابة تنتمي للسؤال
                     $answer = Answer::where('id', $aId)->where('question_id', $qId)->first();
                     if (!$answer) {
                         DB::rollBack();
                         return response()->json(['message' => "الإجابة {$aId} لا تنتمي للسؤال {$qId}"], 422);
                     }
 
-                    // إذا لم يسبق تسجيل إجابة لهذا السؤال
                     $exists = UserBookAnswer::where([
                         'user_id' => $user->id,
                         'book_id' => $bookId,
@@ -239,7 +279,6 @@ class QuestionController extends Controller
                     }
                 }
 
-                // تحديث الإجابات بعد الإدخال الجديد
                 $userAnswers = UserBookAnswer::where('user_id', $user->id)
                     ->where('book_id', $bookId)
                     ->where('completed', false)
@@ -248,7 +287,6 @@ class QuestionController extends Controller
                 $answeredIds = $userAnswers->pluck('question_id')->unique()->sort()->values()->toArray();
             }
 
-            // يجب أن يجيب المستخدم على جميع الأسئلة
             sort($expectedQuestionIds);
             sort($answeredIds);
 
@@ -261,12 +299,10 @@ class QuestionController extends Controller
                 ], 422);
             }
 
-            // إضافة نقاط للمستخدم
             if ($newPoints > 0) {
                 $user->increment('points', $newPoints);
             }
 
-            // تعيين completed = true
             UserBookAnswer::where('user_id', $user->id)
                 ->where('book_id', $bookId)
                 ->where('completed', false)

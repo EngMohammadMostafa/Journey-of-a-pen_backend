@@ -9,13 +9,12 @@ use App\Models\UserBookAnswer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use App\Http\Resources\QuestionResource;
 
 class UserBookAnswerController extends Controller
 {
     /**
      * Start session (Accept) — يعيد 3 أسئلة دفعة واحدة.
-     * الآن يستخدم QuestionResource حتى لا يظهر is_correct للمستخدم العادي.
+     * الإجابات المرسلة للمستخدم لا تحتوي على is_correct لأننا نستخدم Resources.
      */
     public function startSession(Request $request, $bookId)
     {
@@ -33,7 +32,7 @@ class UserBookAnswerController extends Controller
             return response()->json(['message' => 'يجب تحميل/امتلاك الكتاب أولاً لتظهر الأسئلة'], 403);
         }
 
-        // تحقق إن كان المستخدم أنهى الأسئلة سابقًا
+        // تحقق إن أنهى المستخدم الأسئلة سابقًا
         $alreadyCompleted = UserBookAnswer::where('user_id', $user->id)
             ->where('book_id', $bookId)
             ->where('completed', true)
@@ -43,7 +42,7 @@ class UserBookAnswerController extends Controller
             return response()->json(['message' => 'لقد أكملت أسئلة هذا الكتاب سابقًا'], 403);
         }
 
-        // جلب الأسئلة الثلاث (ثابتة: ترتيب حسب id)
+        // جلب الأسئلة الثلاث (ترتيب حسب id)
         $questions = Question::with('answers')
             ->where('book_id', $bookId)
             ->orderBy('id')
@@ -54,24 +53,22 @@ class UserBookAnswerController extends Controller
             return response()->json(['message' => 'لا توجد أسئلة لهذا الكتاب'], 404);
         }
 
-        // نُرجع الموارد — الإجابات لن تحتوي على is_correct للمستخدم العادي
+        // نُعيد الأسئلة — الافتراض أن لديك QuestionResource الذي يخفي is_correct للمستخدم العادي
         return response()->json([
             'success' => true,
-            'questions' => QuestionResource::collection($questions)
+            'questions' => \App\Http\Resources\QuestionResource::collection($questions)
         ]);
     }
 
     /**
-     * Record a single answer (called when user answers one question).
-     * - يمنع الإجابة على نفس السؤال مرتين
-     * - يحسب النقطة فوراً إن كانت الإجابة صحيحة
-     * - لا يقوم بعمل completed=true هنا (يتم عند submit)
+     * Record a single answer (user answers one question).
+     * - يمنع الإجابة المكررة على نفس السؤال
+     * - يخزن النتيجة في جدول UserBookAnswer ويعيد هل كانت صحيحة للمستخدم فقط
      */
     public function recordAnswer(Request $request, $bookId)
     {
         $user = $request->user();
 
-        // التحقق من صحة البيانات الواردة
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|integer|exists:questions,id',
             'answer_id' => 'required|integer|exists:answers,id'
@@ -84,13 +81,13 @@ class UserBookAnswerController extends Controller
         $questionId = (int)$request->input('question_id');
         $answerId = (int)$request->input('answer_id');
 
-        // التأكد أن السؤال من الكتاب وأنه من ضمن 3 أسئلة للجلسة
+        // التأكد أن السؤال من نفس الكتاب (ومن ضمن الثلاثة المختارة في الجلسة)
         $expectedQuestions = Question::where('book_id', $bookId)->orderBy('id')->take(3)->pluck('id')->toArray();
         if (!in_array($questionId, $expectedQuestions, true)) {
             return response()->json(['message' => 'هذا السؤال غير صالح لهذه الجلسة'], 422);
         }
 
-        // التأكد أن الإجابة تنتمي للسؤال
+        // التأكد أن الإجابة تنتمي فعلاً للسؤال
         $answer = Answer::where('id', $answerId)->where('question_id', $questionId)->first();
         if (!$answer) {
             return response()->json(['message' => 'الإجابة المختارة لا تنتمي لهذا السؤال'], 422);
@@ -107,10 +104,10 @@ class UserBookAnswerController extends Controller
             return response()->json(['message' => 'لقد أجبت على هذا السؤال سابقًا'], 409);
         }
 
-        // تحديد صحة الإجابة (يُستخدم داخلياً فقط)
+        // تحديد صحة الإجابة (معلومة داخلية)
         $isCorrect = (bool)$answer->is_correct;
 
-        // حفظ الإجابة في جدول UserBookAnswer
+        // حفظ سجل إجابة المستخدم
         $record = UserBookAnswer::create([
             'user_id' => $user->id,
             'book_id' => $bookId,
@@ -120,25 +117,25 @@ class UserBookAnswerController extends Controller
             'completed' => false,
         ]);
 
-        // حساب النقاط للإجابة الحالية فقط
+        // منح النقطة فورياً إن كانت صحيحة
         $pointsEarned = $isCorrect ? 1 : 0;
         if ($pointsEarned > 0) {
-            $user->increment('points', $pointsEarned); // زيادة نقاط المستخدم فقط إذا الإجابة صحيحة
+            // زيادة نقاط المستخدم
+            $user->increment('points', $pointsEarned);
             $user->refresh();
         }
 
-        // عدد الإجابات الحالية في هذه الجلسة (غير مكتملة)
+        // عدد الإجابات الحالية في الجلسة (غير مكتملة)
         $answeredCount = UserBookAnswer::where('user_id', $user->id)
             ->where('book_id', $bookId)
             ->where('completed', false)
             ->count();
 
-        // إعادة الاستجابة للمستخدم: لا نُظهر is_correct الإجمالي لكل الخيارات
-        // بل نُخبره فقط إن كانت إجابته صحيحة أم لا، ونُعيد السجل المخزن
+        // نعيد نتيجة إجابة المستخدم (is_correct) + السجل المخزون
         return response()->json([
             'message' => 'تم حفظ إجابتك',
             'record' => $record,
-            'is_correct' => $isCorrect,            // هذه تظهر للمستخدم ليرى نتيجة إجابته فقط
+            'is_correct' => $isCorrect,            // feedback للمستخدم على إجابته فقط
             'points_earned' => $pointsEarned,
             'total_points' => $user->points,
             'answered_count' => $answeredCount,
@@ -148,14 +145,132 @@ class UserBookAnswerController extends Controller
 
     /**
      * Submit all answers (Finish).
-     * - يتحقق أن المستخدم أجاب على كل الأسئلة (3) — وإلا سيرفض
-     * - عند النجاح: يعين completed = true لكل سجلات هذه الجلسة
+     * - يتحقق أن المستخدم أجاب على الأسئلة المطلوبة (3)
+     * - يدعم إرسال الإجابات دفعة واحدة أو الاعتماد على السجلات الموجودة
+     * - يعين completed = true، ويضيف أي نقاط جديدة
      */
     public function submitAnswers(Request $request, $bookId)
     {
-        // انسخ هنا نفس دالتك الحالية كما أرسلتها في الكود السابق.
-        // لقد قمت بإرسالها مسبقاً في محادثتنا — إن أردت سأُدرجها كاملة هنا أيضاً.
-        return response()->json(['message' => 'submitAnswers موجودة مسبقاً — أخبرني إن تريد أن أدرجها هنا بنفس المحتوى.']);
+        $user = $request->user();
+
+        // الأسئلة المتوقعة للجلسة (ثلاثة حسب منطقتك)
+        $expectedQuestionIds = Question::where('book_id', $bookId)
+            ->orderBy('id')
+            ->take(3)
+            ->pluck('id')
+            ->toArray();
+
+        if (count($expectedQuestionIds) === 0) {
+            return response()->json(['message' => 'لا توجد أسئلة لهذا الكتاب'], 404);
+        }
+
+        // إجابات المستخدم الحالية (غير مكتملة)
+        $userAnswers = UserBookAnswer::where('user_id', $user->id)
+            ->where('book_id', $bookId)
+            ->where('completed', false)
+            ->get();
+
+        $answeredIds = $userAnswers->pluck('question_id')->unique()->sort()->values()->toArray();
+
+        $incomingAnswers = $request->input('answers', null); // يمكن إرسال مصفوفة إجابات لتعويض المفقود
+        $newPoints = 0;
+
+        DB::beginTransaction();
+        try {
+            // لو أرسل المستخدم إجابات جديدة في body، نعالجها ونُدخل أي سجلات مفقودة
+            if (is_array($incomingAnswers) && count($incomingAnswers) > 0) {
+                $validator = Validator::make($request->all(), [
+                    'answers' => 'required|array',
+                    'answers.*.question_id' => 'required|integer|exists:questions,id',
+                    'answers.*.answer_id' => 'required|integer|exists:answers,id',
+                ]);
+                if ($validator->fails()) {
+                    DB::rollBack();
+                    return response()->json(['errors' => $validator->errors()], 422);
+                }
+
+                foreach ($incomingAnswers as $ans) {
+                    $qId = (int)$ans['question_id'];
+                    $aId = (int)$ans['answer_id'];
+
+                    // تحقق أن السؤال ضمن جلسة الثلاثة
+                    if (!in_array($qId, $expectedQuestionIds, true)) {
+                        DB::rollBack();
+                        return response()->json(['message' => 'إرسال سؤال غير صالح للجلسة: ' . $qId], 422);
+                    }
+
+                    // تحقق أن الإجابة تنتمي للسؤال
+                    $answer = Answer::where('id', $aId)->where('question_id', $qId)->first();
+                    if (!$answer) {
+                        DB::rollBack();
+                        return response()->json(['message' => "الإجابة {$aId} لا تنتمي للسؤال {$qId}"], 422);
+                    }
+
+                    // إذا لم يكن قد تم تسجيل إجابة لهذا السؤال مسبقًا، نضيفها
+                    $exists = UserBookAnswer::where([
+                        'user_id' => $user->id,
+                        'book_id' => $bookId,
+                        'question_id' => $qId
+                    ])->exists();
+
+                    if (!$exists) {
+                        $isCorrect = (bool)$answer->is_correct;
+                        UserBookAnswer::create([
+                            'user_id' => $user->id,
+                            'book_id' => $bookId,
+                            'question_id' => $qId,
+                            'answer_id' => $aId,
+                            'is_correct' => $isCorrect,
+                            'completed' => false,
+                        ]);
+                        if ($isCorrect) $newPoints++;
+                    }
+                }
+
+                // تحديث قائمة الإجابات بعد الإضافة
+                $userAnswers = UserBookAnswer::where('user_id', $user->id)
+                    ->where('book_id', $bookId)
+                    ->where('completed', false)
+                    ->get();
+
+                $answeredIds = $userAnswers->pluck('question_id')->unique()->sort()->values()->toArray();
+            }
+
+            // تأكد أن المستخدم أجاب على كل الأسئلة المتوقعة
+            sort($expectedQuestionIds);
+            sort($answeredIds);
+            if ($answeredIds !== $expectedQuestionIds) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'يجب الإجابة على جميع الأسئلة قبل الضغط على Finish',
+                    'expected_questions' => $expectedQuestionIds,
+                    'answered_questions' => $answeredIds
+                ], 422);
+            }
+
+            // إذا توجد نقاط جديدة نزوّد بها المستخدم
+            if ($newPoints > 0) {
+                $user->increment('points', $newPoints);
+                $user->refresh();
+            }
+
+            // تعيين completed = true لكل سجلات هذه الجلسة
+            UserBookAnswer::where('user_id', $user->id)
+                ->where('book_id', $bookId)
+                ->where('completed', false)
+                ->update(['completed' => true, 'updated_at' => now()]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'فشل إنهاء الجلسة', 'error' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنهاء الجلسة بنجاح.',
+            'total_points' => $user->fresh()->points
+        ]);
     }
 
     /**
