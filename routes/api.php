@@ -70,7 +70,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // الأسئلة الخاصة بالكتاب (المستخدم العادي)
     Route::get('/books/{bookId}/questions', [QuestionController::class, 'getBookQuestions']);
 
-    // جلسات الإجابة على الأسئلة
+    // جلسات الإجابة على الأسئلة (للمستخدم العادي)
     Route::post('/books/{bookId}/session/start', [UserBookAnswerController::class,'startSession']);
     Route::post('/books/{bookId}/session/answer', [UserBookAnswerController::class,'recordAnswer']);
     Route::post('/books/{bookId}/session/submit', [UserBookAnswerController::class,'submitAnswers']);
@@ -104,12 +104,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // إدارة الاقتباسات
         Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); // حذف اقتباس
 
-        // إدارة الأسئلة
+        // إدارة الأسئلة (CRUD للادمن)
         Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); // إضافة سؤال
         Route::put('/questions/{id}', [QuestionController::class,'update']);          // تعديل سؤال
         Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       // حذف سؤال
 
-        // إدارة الإجابات
+        // **مساران إداريان جديدان للعرض (طلبك):**
+        // 1) يعيد كل أسئلة كتاب محدد مع الإجابات (وللأدمن تظهر is_correct)
+        Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
+
+        // 2) يعيد سؤال محدد داخل كتاب محدد مع الإجابات (وللأدمن تظهر is_correct)
+        Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
+
+        // إدارة الإجابات (CRUD للادمن)
         Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); // إضافة إجابة
         Route::put('/answers/{id}', [AnswerController::class,'update']);                    // تعديل إجابة
         Route::delete('/answers/{id}', [AnswerController::class,'destroy']);                // حذف إجابة
