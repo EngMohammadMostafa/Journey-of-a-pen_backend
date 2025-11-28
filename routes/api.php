@@ -109,11 +109,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/questions/{id}', [QuestionController::class,'update']);          // تعديل سؤال
         Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       // حذف سؤال
 
-        // **مساران إداريان جديدان للعرض (طلبك):**
-        // 1) يعيد كل أسئلة كتاب محدد مع الإجابات (وللأدمن تظهر is_correct)
+        // **مسارات عرض الأسئلة للأدمن**
+        // 1) يعيد كل أسئلة كتاب محدد مع جميع الإجابات (is_correct ظاهر)
         Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
 
-        // 2) يعيد سؤال محدد داخل كتاب محدد مع الإجابات (وللأدمن تظهر is_correct)
+        // 2) يعيد كل أسئلة كتاب محدد مع الإجابات الصحيحة فقط (is_correct ظاهر)
+        Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
+
+        // 3) يعيد سؤال محدد داخل كتاب محدد مع الإجابات (is_correct ظاهر)
         Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
 
         // إدارة الإجابات (CRUD للادمن)

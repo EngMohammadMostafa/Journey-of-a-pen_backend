@@ -19,7 +19,7 @@ class QuestionController extends Controller
      * (USER) جلب أسئلة كتاب معيّن
      * ------------------------------
      * - يتحقق أن المستخدم يملك الكتاب
-     * - يتحقق أن المستخدم لم يكمل الأسئلة سابقًا (completed = true)
+     * - يتحقق أن المستخدم لم يكمل الأسئلة سابقًا
      * - يرجع 3 أسئلة فقط
      * - AnswerResource يخفي is_correct للمستخدم العادي
      *
@@ -144,66 +144,66 @@ class QuestionController extends Controller
 
     /**
      * ------------------------------
-     * (ADMIN) جلب كل أسئلة كتاب مع الإجابات
+     * (ADMIN) جلب كل أسئلة كتاب مع جميع الإجابات
      * ------------------------------
      * يظهر is_correct لكل إجابة
      * Route: GET /api/admin/books/{bookId}/questions-with-answers
      */
     public function adminGetBookQuestionsWithAnswers($bookId)
     {
+        $book = Book::find($bookId);
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
         $questions = Question::with('answers')
             ->where('book_id', $bookId)
             ->get();
 
         return response()->json([
             'success' => true,
+            'book_title' => $book->title,
             'questions' => $questions
-        ], 200);
+        ]);
     }
 
     /**
      * ------------------------------
-     * (ADMIN) جلب سؤال محدد داخل كتاب مع الإجابات
+     * (ADMIN) جلب كل أسئلة كتاب مع الإجابات الصحيحة فقط
      * ------------------------------
      * يظهر is_correct لكل إجابة
-     * Route: GET /api/admin/books/{bookId}/questions/{questionId}
+     * Route: GET /api/admin/books/{bookId}/questions-with-correct-answers
      */
-    public function adminShowQuestionForBook($bookId, $questionId)
+    public function adminGetBookQuestionsWithCorrectAnswers($bookId)
     {
-        $question = Question::with('answers')
-            ->where('book_id', $bookId)
-            ->where('id', $questionId)
-            ->first();
-
-        if (!$question) {
-            return response()->json([
-                'success' => false,
-                'message' => 'السؤال غير موجود'
-            ], 404);
+        $book = Book::find($bookId);
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
+
+        // جلب الأسئلة مع الإجابات الصحيحة فقط
+        $questions = Question::with(['answers' => function($query) {
+            $query->where('is_correct', true);
+        }])->where('book_id', $bookId)->get();
 
         return response()->json([
             'success' => true,
-            'question' => $question
-        ], 200);
+            'book_title' => $book->title,
+            'questions' => $questions
+        ]);
     }
 
     /**
      * ------------------------------
      * (USER) إنهاء الجلسة + احتساب النقاط
      * ------------------------------
-     * - يجب أن يجيب المستخدم على الأسئلة الثلاثة
-     * - يتم التحقق من صحة الإجابات
-     * - يتم تسجيل النقاط
-     * - يتم تحديث completed = true لكل الإجابات
-     *
      * Route: POST /api/books/{bookId}/session/submit
      */
     public function submitAnswers(Request $request, $bookId)
     {
         $user = Auth::user();
 
-        // جلب الأسئلة المطلوبة (3 أسئلة فقط)
+        // جلب 3 أسئلة فقط
         $expectedQuestionIds = Question::where('book_id', $bookId)
             ->orderBy('id')
             ->take(3)
@@ -214,21 +214,18 @@ class QuestionController extends Controller
             return response()->json(['message' => 'لا توجد أسئلة لهذا الكتاب'], 404);
         }
 
-        // جلب الإجابات الحالية (غير مكتملة)
         $userAnswers = UserBookAnswer::where('user_id', $user->id)
             ->where('book_id', $bookId)
             ->where('completed', false)
             ->get();
 
         $answeredIds = $userAnswers->pluck('question_id')->unique()->sort()->values()->toArray();
-
         $incomingAnswers = $request->input('answers', null); 
         $newPoints = 0;
 
         DB::beginTransaction();
         try {
             if (is_array($incomingAnswers) && count($incomingAnswers) > 0) {
-
                 $validator = Validator::make($request->all(), [
                     'answers' => 'required|array',
                     'answers.*.question_id' => 'required|integer|exists:questions,id',
@@ -273,9 +270,7 @@ class QuestionController extends Controller
                             'completed' => false,
                         ]);
 
-                        if ($isCorrect) {
-                            $newPoints++;
-                        }
+                        if ($isCorrect) $newPoints++;
                     }
                 }
 
@@ -299,9 +294,7 @@ class QuestionController extends Controller
                 ], 422);
             }
 
-            if ($newPoints > 0) {
-                $user->increment('points', $newPoints);
-            }
+            if ($newPoints > 0) $user->increment('points', $newPoints);
 
             UserBookAnswer::where('user_id', $user->id)
                 ->where('book_id', $bookId)
