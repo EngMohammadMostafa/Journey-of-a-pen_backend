@@ -26,9 +26,14 @@ class Book extends Model
     // 🔗 العلاقة مع المستخدمين (pivot table)
     public function users()
     {
-        return $this->belongsToMany(ReadingPlatformUser::class, 'book_user')
-                    ->withPivot('liked', 'owned', 'downloaded_at')
-                    ->withTimestamps();
+        return $this->belongsToMany(
+            ReadingPlatformUser::class,
+            'book_user',
+            'book_id',   // مفتاح الكتاب في pivot
+            'user_id'    // مفتاح المستخدم الصحيح
+        )
+        ->withPivot('liked', 'owned', 'downloaded_at')
+        ->withTimestamps();
     }
 
     // 🔗 العلاقة مع الأسئلة
