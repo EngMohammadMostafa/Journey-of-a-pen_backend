@@ -19,9 +19,8 @@ class QuestionController extends Controller
      * (USER) جلب أسئلة كتاب معيّن
      * ------------------------------
      * - يتحقق أن المستخدم يملك الكتاب
-     * - يتحقق أن المستخدم لم يكمل الأسئلة سابقًا
+     * - يتحقق من عدم حل الأسئلة مسبقًا
      * - يرجع 3 أسئلة فقط
-     * - AnswerResource يخفي is_correct للمستخدم العادي
      *
      * Route: GET /api/books/{bookId}/questions
      */
@@ -40,7 +39,7 @@ class QuestionController extends Controller
             return response()->json(['message' => 'لا يمكنك الوصول إلى الأسئلة قبل تحميل/شراء الكتاب'], 403);
         }
 
-        // التحقق من أن المستخدم لم يكمل الأسئلة سابقًا
+        // التأكد أن المستخدم لم يكمل الأسئلة مسبقًا
         $alreadyAnswered = UserBookAnswer::where('user_id', $user->id)
             ->where('book_id', $bookId)
             ->where('completed', true)
@@ -50,7 +49,7 @@ class QuestionController extends Controller
             return response()->json(['message' => 'لقد أكملت هذه الأسئلة سابقًا ولا يمكنك تكرارها'], 403);
         }
 
-        // جلب الأسئلة مع الإجابات (3 فقط)
+        // جلب الأسئلة + الإجابات (3 فقط)
         $questions = Question::with('answers')
             ->where('book_id', $bookId)
             ->take(3)
@@ -130,10 +129,10 @@ class QuestionController extends Controller
             return response()->json(['message' => 'السؤال غير موجود'], 404);
         }
 
-        // حذف الإجابات المرتبطة بالسؤال
+        // حذف الإجابات المرتبطة
         $question->answers()->delete();
 
-        // حذف السؤال نفسه
+        // حذف السؤال
         $question->delete();
 
         return response()->json([
@@ -144,9 +143,8 @@ class QuestionController extends Controller
 
     /**
      * ------------------------------
-     * (ADMIN) جلب كل أسئلة كتاب مع جميع الإجابات
+     * (ADMIN) جلب أسئلة كتاب مع كل الإجابات
      * ------------------------------
-     * يظهر is_correct لكل إجابة
      * Route: GET /api/admin/books/{bookId}/questions-with-answers
      */
     public function adminGetBookQuestionsWithAnswers($bookId)
@@ -169,9 +167,8 @@ class QuestionController extends Controller
 
     /**
      * ------------------------------
-     * (ADMIN) جلب كل أسئلة كتاب مع الإجابات الصحيحة فقط
+     * (ADMIN) جلب أسئلة كتاب مع الإجابات الصحيحة فقط
      * ------------------------------
-     * يظهر is_correct لكل إجابة
      * Route: GET /api/admin/books/{bookId}/questions-with-correct-answers
      */
     public function adminGetBookQuestionsWithCorrectAnswers($bookId)
@@ -181,9 +178,8 @@ class QuestionController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        // جلب الأسئلة مع الإجابات الصحيحة فقط
-        $questions = Question::with(['answers' => function($query) {
-            $query->where('is_correct', true);
+        $questions = Question::with(['answers' => function($q) {
+            $q->where('is_correct', true);
         }])->where('book_id', $bookId)->get();
 
         return response()->json([
@@ -203,7 +199,6 @@ class QuestionController extends Controller
     {
         $user = Auth::user();
 
-        // جلب 3 أسئلة فقط
         $expectedQuestionIds = Question::where('book_id', $bookId)
             ->orderBy('id')
             ->take(3)
@@ -220,12 +215,14 @@ class QuestionController extends Controller
             ->get();
 
         $answeredIds = $userAnswers->pluck('question_id')->unique()->sort()->values()->toArray();
-        $incomingAnswers = $request->input('answers', null); 
+        $incomingAnswers = $request->input('answers', null);
+
         $newPoints = 0;
 
         DB::beginTransaction();
         try {
             if (is_array($incomingAnswers) && count($incomingAnswers) > 0) {
+
                 $validator = Validator::make($request->all(), [
                     'answers' => 'required|array',
                     'answers.*.question_id' => 'required|integer|exists:questions,id',
@@ -243,13 +240,16 @@ class QuestionController extends Controller
 
                     if (!in_array($qId, $expectedQuestionIds, true)) {
                         DB::rollBack();
-                        return response()->json(['message' => 'إرسال سؤال غير صالح للجلسة: ' . $qId], 422);
+                        return response()->json(['message' => 'سؤال غير تابع للجلسة: ' . $qId], 422);
                     }
 
-                    $answer = Answer::where('id', $aId)->where('question_id', $qId)->first();
+                    $answer = Answer::where('id', $aId)
+                        ->where('question_id', $qId)
+                        ->first();
+
                     if (!$answer) {
                         DB::rollBack();
-                        return response()->json(['message' => "الإجابة {$aId} لا تنتمي للسؤال {$qId}"], 422);
+                        return response()->json(['message' => "الإجابة {$aId} لا تتبع السؤال {$qId}"], 422);
                     }
 
                     $exists = UserBookAnswer::where([
@@ -288,7 +288,7 @@ class QuestionController extends Controller
             if ($answeredIds !== $expectedQuestionIds) {
                 DB::rollBack();
                 return response()->json([
-                    'message' => 'يجب الإجابة على جميع الأسئلة قبل الضغط على Finish',
+                    'message' => 'يجب الإجابة على جميع الأسئلة قبل Finish',
                     'expected_questions' => $expectedQuestionIds,
                     'answered_questions' => $answeredIds
                 ], 422);
@@ -299,7 +299,10 @@ class QuestionController extends Controller
             UserBookAnswer::where('user_id', $user->id)
                 ->where('book_id', $bookId)
                 ->where('completed', false)
-                ->update(['completed' => true, 'updated_at' => now()]);
+                ->update([
+                    'completed' => true,
+                    'updated_at' => now()
+                ]);
 
             DB::commit();
 
@@ -315,6 +318,59 @@ class QuestionController extends Controller
             'success' => true,
             'message' => 'تم إنهاء الجلسة بنجاح.',
             'total_points' => $user->fresh()->points
+        ]);
+    }
+
+    /**
+     * ======================================================================
+     *                      دوال جديدة خاصة بعرض جدول الأسئلة
+     * ======================================================================
+     */
+
+    /**
+     * -----------------------------------------------------
+     * (ADMIN) جلب كل الأسئلة لكتاب معيّن بدون الإجابات
+     * (مناسب لعرض جدول الأسئلة كما في الصورة)
+     * -----------------------------------------------------
+     * Route: GET /api/admin/books/{bookId}/questions
+     */
+    public function adminGetQuestionsOnly($bookId)
+    {
+        $book = Book::find($bookId);
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
+        // نعيد فقط الحقول المطلوبة لعرض جدول بسيط
+        $questions = Question::where('book_id', $bookId)
+            ->select('id', 'question_text', 'book_id', 'created_at', 'updated_at')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'book_title' => $book->title,
+            'questions' => $questions
+        ]);
+    }
+
+    /**
+     * -----------------------------------------------------
+     * (ADMIN) جلب سؤال واحد مع إجاباتـه
+     * (مناسب لصفحة تعديل السؤال + تعديل الإجابات)
+     * -----------------------------------------------------
+     * Route: GET /api/admin/questions/{id}
+     */
+    public function adminShowQuestion($id)
+    {
+        $question = Question::with('answers')->find($id);
+        if (!$question) {
+            return response()->json(['message' => 'السؤال غير موجود'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'question' => $question
         ]);
     }
 }

@@ -8,8 +8,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\BookController;
-use App\Http\Controllers\QuestionController;
-use App\Http\Controllers\AnswerController;
+use App\Http\Controllers\QuestionController; // تحكم بالأسئلة
+use App\Http\Controllers\AnswerController;   // تحكم بالإجابات
 use App\Http\Controllers\UserBookAnswerController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\RepointController;
@@ -104,12 +104,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // إدارة الاقتباسات
         Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); // حذف اقتباس
 
-        // إدارة الأسئلة (CRUD للادمن)
+        // إدارة الأسئلة (CRUD للأدمن)
         Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); // إضافة سؤال
         Route::put('/questions/{id}', [QuestionController::class,'update']);          // تعديل سؤال
         Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       // حذف سؤال
 
-        // **مسارات عرض الأسئلة للأدمن**
+        /*
+         * -------------------------
+         * مسارات عرض الأسئلة للأدمن
+         * -------------------------
+         */
+
         // 1) يعيد كل أسئلة كتاب محدد مع جميع الإجابات (is_correct ظاهر)
         Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
 
@@ -119,7 +124,45 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // 3) يعيد سؤال محدد داخل كتاب محدد مع الإجابات (is_correct ظاهر)
         Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
 
-        // إدارة الإجابات (CRUD للادمن)
+        /*
+         * إضافات مفيدة للـ Admin / Dashboard
+         * ---------------------------------
+         * المسارات التالية تُسهل على الـ frontend جلب بيانات الأسئلة فقط (بدون إجابات)
+         * وذلك لعرض جدول الأسئلة بشكل أخف وأسرع.
+         */
+
+        // 4) يعيد كل الأسئلة لكتاب محدد **بدون** الإجابات (مناسب لعرض جدول الأسئلة فقط)
+        // مثال استهلاك من الفرونت: GET /api/admin/books/3/questions
+        Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
+
+        // 5) يعيد سؤال واحد حسب الـ id (مناسب لصفحة التعديل — يجلب بيانات السؤال فقط)
+        // مثال استهلاك من الفرونت: GET /api/admin/questions/12
+        Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
+
+        /*
+         * -------------------------
+         * مسارات عرض/إدارة الإجابات للأدمن
+         * -------------------------
+         * هذه المسارات تُتيح للـ frontend عرض جدول الإجابات كما في الصورة:
+         * الحقول: id, answer_text, is_correct, question_id, answer_date, created_at, updated_at
+         */
+
+        // يعيد كل الإجابات (يدعم فلترة عبر query params & pagination)
+        // مثال: GET /api/admin/answers?per_page=20&page=1
+        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']);
+
+        // يعيد كل الإجابات لسؤال محدد (مناسب لصفحة تفاصيل السؤال)
+        // مثال: GET /api/admin/questions/3/answers
+        Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']);
+
+        // يعيد إجابة واحدة (مناسبة لصفحة تعديل إجابة)
+        // مثال: GET /api/admin/answers/12
+        Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']);
+
+        /*
+         * إدارة الإجابات (CRUD للأدمن)
+         * (المسارات الأصلية لإنشاء/تعديل/حذف الإجابات موجودة أيضاً)
+         */
         Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); // إضافة إجابة
         Route::put('/answers/{id}', [AnswerController::class,'update']);                    // تعديل إجابة
         Route::delete('/answers/{id}', [AnswerController::class,'destroy']);                // حذف إجابة
