@@ -12,7 +12,7 @@ class AnswerController extends Controller
 {
     /**
      * Admin: إضافة إجابة لسؤال
-     * Route example: POST /api/admin/questions/{questionId}/answers
+     * Route: POST /api/admin/questions/{questionId}/answers
      * - يتحقق من وجود السؤال
      * - ينشئ الإجابة (is_correct ممكن تزويده أو لا)
      * - يعيد AnswerResource (سيسمح بعرض is_correct فقط للأدمن)
@@ -39,7 +39,6 @@ class AnswerController extends Controller
             'question_id' => $question->id
         ]);
 
-        // نُعيد المورد بدل النموذج الخام لضمان اتساق العرض
         return response()->json([
             'message' => 'تم إنشاء خيار',
             'answer' => new AnswerResource($answer)
@@ -48,7 +47,7 @@ class AnswerController extends Controller
 
     /**
      * Admin: تعديل إجابة
-     * Route example: PUT /api/admin/answers/{id}
+     * Route: PUT /api/admin/answers/{id}
      * - يحدث الحقول المرسلة فقط
      * - يعيد AnswerResource محدث
      */
@@ -78,7 +77,7 @@ class AnswerController extends Controller
 
     /**
      * Admin: حذف إجابة
-     * Route example: DELETE /api/admin/answers/{id}
+     * Route: DELETE /api/admin/answers/{id}
      */
     public function destroy($id)
     {
@@ -89,5 +88,66 @@ class AnswerController extends Controller
 
         $answer->delete();
         return response()->json(['message' => 'تم حذف الخيار']);
+    }
+
+    /**
+     * Admin: جلب كل الإجابات مع دعم Pagination وفلترة عبر query params
+     * Route: GET /api/admin/answers
+     * Query params:
+     *  - per_page: عدد النتائج في الصفحة الواحدة (افتراضي 15)
+     *  - page: رقم الصفحة
+     *  - question_id: فلترة حسب سؤال معين (اختياري)
+     *  - is_correct: فلترة حسب الإجابات الصحيحة أو الخاطئة (اختياري)
+     */
+    public function adminGetAllAnswers(Request $request)
+    {
+        $query = Answer::query();
+
+        // فلترة حسب السؤال إذا تم تمريره
+        if ($request->has('question_id')) {
+            $query->where('question_id', $request->question_id);
+        }
+
+        // فلترة حسب is_correct إذا تم تمريره
+        if ($request->has('is_correct')) {
+            $query->where('is_correct', filter_var($request->is_correct, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $perPage = $request->get('per_page', 15); // العدد الافتراضي لكل صفحة
+        $answers = $query->paginate($perPage);
+
+        return AnswerResource::collection($answers);
+    }
+
+    /**
+     * Admin: جلب كل الإجابات لسؤال محدد
+     * Route: GET /api/admin/questions/{questionId}/answers
+     * - مناسب لعرض جدول الإجابات داخل صفحة السؤال
+     */
+    public function adminGetAnswersByQuestion($questionId)
+    {
+        $question = Question::find($questionId);
+        if (!$question) {
+            return response()->json(['message' => 'السؤال غير موجود'], 404);
+        }
+
+        // جلب جميع الإجابات المرتبطة بالسؤال
+        $answers = $question->answers()->get(); // تأكد أن موديل Question يحتوي على relation answers()
+        return AnswerResource::collection($answers);
+    }
+
+    /**
+     * Admin: جلب إجابة واحدة حسب id
+     * Route: GET /api/admin/answers/{id}
+     * - مناسب لصفحة تعديل إجابة
+     */
+    public function adminShowAnswer($id)
+    {
+        $answer = Answer::find($id);
+        if (!$answer) {
+            return response()->json(['message' => 'الخيار غير موجود'], 404);
+        }
+
+        return new AnswerResource($answer);
     }
 }
