@@ -125,44 +125,34 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
 
         /*
-         * إضافات مفيدة للـ Admin / Dashboard
-         * ---------------------------------
-         * المسارات التالية تُسهل على الـ frontend جلب بيانات الأسئلة فقط (بدون إجابات)
-         * وذلك لعرض جدول الأسئلة بشكل أخف وأسرع.
+         * 4) يعيد كل الأسئلة لكتاب محدد **بدون** الإجابات (مناسب لعرض جدول الأسئلة فقط)
          */
-
-        // 4) يعيد كل الأسئلة لكتاب محدد **بدون** الإجابات (مناسب لعرض جدول الأسئلة فقط)
-        // مثال استهلاك من الفرونت: GET /api/admin/books/3/questions
         Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
 
-        // 5) يعيد سؤال واحد حسب الـ id (مناسب لصفحة التعديل — يجلب بيانات السؤال فقط)
-        // مثال استهلاك من الفرونت: GET /api/admin/questions/12
+        /*
+         * 5) يعيد سؤال واحد حسب الـ id (مناسب لصفحة التعديل — يجلب بيانات السؤال فقط)
+         */
         Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
+
+        /*
+         * -------------------------
+         * 🔹 إضافة جديدة: يعيد كل الأسئلة من كل الكتب **بدون الإجابات** (Admin Dashboard)
+         * مثال استهلاك من الفرونت: GET /api/admin/questions
+         * يدعم Pagination: ?page=1&per_page=10
+         * يمكن لاحقاً إضافة فلترة: ?book_id=3 أو ?search=نص
+         */
+        Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']);
 
         /*
          * -------------------------
          * مسارات عرض/إدارة الإجابات للأدمن
          * -------------------------
-         * هذه المسارات تُتيح للـ frontend عرض جدول الإجابات كما في الصورة:
-         * الحقول: id, answer_text, is_correct, question_id, answer_date, created_at, updated_at
          */
+        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']);                // كل الإجابات (مع Pagination)
+        Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); // كل الإجابات لسؤال محدد
+        Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']);             // إجابة واحدة
 
-        // يعيد كل الإجابات (يدعم فلترة عبر query params & pagination)
-        // مثال: GET /api/admin/answers?per_page=20&page=1
-        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']);
-
-        // يعيد كل الإجابات لسؤال محدد (مناسب لصفحة تفاصيل السؤال)
-        // مثال: GET /api/admin/questions/3/answers
-        Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']);
-
-        // يعيد إجابة واحدة (مناسبة لصفحة تعديل إجابة)
-        // مثال: GET /api/admin/answers/12
-        Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']);
-
-        /*
-         * إدارة الإجابات (CRUD للأدمن)
-         * (المسارات الأصلية لإنشاء/تعديل/حذف الإجابات موجودة أيضاً)
-         */
+        // إدارة الإجابات (CRUD)
         Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); // إضافة إجابة
         Route::put('/answers/{id}', [AnswerController::class,'update']);                    // تعديل إجابة
         Route::delete('/answers/{id}', [AnswerController::class,'destroy']);                // حذف إجابة
@@ -178,4 +168,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
    رابط عام لخدمة الملفات (signed URL)
 --------------------------------- */
 Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
-     ->name('books.serveDownload'); // رابط تحميل الكتاب مؤقتًا للمستخدم
+     ->name('books.serveDownload'); // رابط تحميل الكتاب مؤقتًا للمستخدم  
