@@ -97,6 +97,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // إدارة المستخدمين
         Route::get('/users', [AdminController::class, 'getAllUsers']);       // عرض كل المستخدمين
+
+        // 🔹 إضافة: جلب مستخدم محدد عبر الـ ID (مفيد لصفحات العرض/التعديل)
+        Route::get('/users/{id}', [AdminController::class, 'getUserById']); // جلب مستخدم واحد
+
         Route::post('/users', [AdminController::class, 'createUser']);       // إنشاء مستخدم جديد (دائمًا عادي)
         Route::put('/users/{id}', [AdminController::class, 'updateUser']);   // تعديل بيانات مستخدم
         Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); // حذف مستخدم (لا يمكن حذف الأدمن الرئيسي)
@@ -146,7 +150,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         /*
          * -------------------------
          * مسارات عرض/إدارة الإجابات للأدمن
-         * -------------------------
+         * ------------------------- 
          */
         Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']);                // كل الإجابات (مع Pagination)
         Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); // كل الإجابات لسؤال محدد
@@ -168,4 +172,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
    رابط عام لخدمة الملفات (signed URL)
 --------------------------------- */
 Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
-     ->name('books.serveDownload'); // رابط تحميل الكتاب مؤقتًا للمستخدم  
+     ->name('books.serveDownload'); // رابط تحميل الكتاب مؤقتًا للمستخدم
