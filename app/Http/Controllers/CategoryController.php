@@ -19,7 +19,7 @@ class CategoryController extends Controller
     }
 
     /**
-     * عرض قسم واحد
+     * عرض قسم واحد حسب الـ ID
      */
     public function show($id)
     {
@@ -49,5 +49,27 @@ class CategoryController extends Controller
         ]);
 
         return response()->json(['success' => true, 'category' => $category], 201);
+    }
+
+    /**
+     * حذف قسم (Admin)
+     * عند حذف القسم:
+     * 1️⃣ سيتم حذف كل الكتب المرتبطة بالقسم
+     * 2️⃣ كل كتاب عند حذفه سيحذف أسئلته، إجاباته، وملفاته تلقائيًا (انظر Book::deleting)
+     */
+    public function destroy($id)
+    {
+        $category = Category::find($id);
+        if (! $category) {
+            return response()->json(['message' => 'القسم غير موجود'], 404);
+        }
+
+        // حذف القسم + كل الكتب المرتبطة به
+        $category->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حذف القسم وجميع الكتب المرتبطة به بنجاح'
+        ]);
     }
 }
