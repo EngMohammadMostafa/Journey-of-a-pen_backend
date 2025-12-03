@@ -12,10 +12,11 @@ class AuthController extends Controller
 {
     /**
      * تسجيل مستخدم جديد
+     * 🔹 ملاحظة: لن يتم إنشاء توكن عند التسجيل، التوكن يُنشأ فقط عند تسجيل الدخول
      */
     public function register(Request $request)
     {
-        // التحقق من البيانات
+        // التحقق من البيانات المدخلة
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|max:20',
             'email' => 'required|email|unique:reading_platform_users',
@@ -35,7 +36,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // إنشاء المستخدم
+        // إنشاء المستخدم الجديد
         $user = ReadingPlatformUser::create([
             'username' => $request->username,
             'email' => $request->email,
@@ -47,11 +48,9 @@ class AuthController extends Controller
             'purchases_count' => 0
         ]);
 
-        // إنشاء التوكن
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // ✅ لا ننشئ التوكن هنا
 
         return response()->json([
-            'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,
@@ -61,12 +60,14 @@ class AuthController extends Controller
                 'user_type' => $user->user_type,
                 'points' => $user->points,
                 'purchases_count' => $user->purchases_count
-            ]
+            ],
+            'message' => 'تم إنشاء الحساب بنجاح'
         ], 201);
     }
 
     /**
      * تسجيل الدخول
+     * 🔹 هنا فقط يتم إنشاء التوكن بعد التحقق من بيانات المستخدم
      */
     public function login(Request $request)
     {
@@ -81,8 +82,6 @@ class AuthController extends Controller
             ], 422);
         }
 
-       
-
         // البحث عن المستخدم
         $user = ReadingPlatformUser::where('email', $request->email)->first();
 
@@ -93,7 +92,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // إنشاء التوكن
+        // إنشاء التوكن بعد التحقق من الدخول
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -116,7 +115,7 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // حذف التوكن الحالي
+        // حذف التوكن الحالي للمستخدم
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
