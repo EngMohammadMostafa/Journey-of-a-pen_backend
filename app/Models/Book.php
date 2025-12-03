@@ -11,9 +11,10 @@ class Book extends Model
     use HasFactory;
 
     // الحقول التي يمكن تعبئتها بشكل جماعي
+    // ✅ تمت إزالة 'discount_rate' بناءً على طلبك
     protected $fillable = [
         'author', 'title', 'description', 'price',
-        'number_of_likes', 'discount_rate', 'book_type',
+        'number_of_likes', 'book_type',
         'file_path', 'file_type', 'file_size', 'category_id'
     ];
 
