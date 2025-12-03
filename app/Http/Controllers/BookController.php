@@ -30,7 +30,6 @@ class BookController extends Controller
     /**
      * 🟢 جلب الكتب حسب القسم
      * Route: GET /api/categories/{categoryId}/books
-     * التحقق من وجود القسم وإرجاع الكتب المرتبطة به
      */
     public function getBooksByCategory($categoryId)
     {
@@ -48,15 +47,12 @@ class BookController extends Controller
     }
 
     /**
-     * عرض كل الكتب
-     * الآن نُعيد لكل كتاب حقل likes_count ليعرض في الواجهة مباشرة
+     * عرض كل الكتب مع عدد الإعجابات
      */
     public function index()
     {
-        // جلب الكتب مع القسم لتقليل الاستعلامات
         $books = Book::with('category')->get();
 
-        // نضيف likes_count لكل كتاب (حتى الواجهة تستقبل الرقم مباشرة)
         $booksArray = $books->map(function($book) {
             return [
                 'id' => $book->id,
@@ -68,7 +64,7 @@ class BookController extends Controller
                 'file_type' => $book->file_type,
                 'file_size' => $book->file_size,
                 'category' => $book->category->name ?? null,
-                'likes_count' => $book->likesCount(), // 🔥 العدد الكلي للإعجابات
+                'likes_count' => $book->likesCount(), // العدد الكلي للإعجابات
             ];
         });
 
@@ -79,8 +75,7 @@ class BookController extends Controller
     }
 
     /**
-     * تفاصيل كتاب محدد
-     * الآن يعيد likes_count أيضاً حتى يمكن عرض العدد عند فتح صفحة الكتاب
+     * عرض تفاصيل كتاب محدد مع عدد الإعجابات
      */
     public function show($id)
     {
@@ -90,7 +85,6 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        // حساب عدد الإعجابات باستخدام pivot
         $likesCount = $book->likesCount();
 
         return response()->json([
@@ -105,13 +99,13 @@ class BookController extends Controller
                 'file_type' => $book->file_type,
                 'file_size' => $book->file_size,
                 'category' => $book->category->name ?? null,
-                'likes_count' => $likesCount // 🔥 هذا هو العدد الكلي للإعجابات
+                'likes_count' => $likesCount
             ]
         ]);
     }
 
     /**
-     * مسار بديل/مخصص: إرجاع كتاب مع عدد الإعجابات (endpoint واضح للمطلوب)
+     * مسار بديل لإرجاع كتاب مع عدد الإعجابات
      * GET /api/books/{id}/with-likes
      */
     public function getBookWithLikes($id)
@@ -164,6 +158,9 @@ class BookController extends Controller
 
     /**
      * إنشاء كتاب (Admin)
+     * 🔹 تم تعديل Validation لتتوافق مع طول الأعمدة الجديد:
+     *      title => max:50
+     *      author => max:30
      */
     public function store(Request $request, $categoryId)
     {
@@ -173,8 +170,8 @@ class BookController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'author' => 'required|string|max:255',
+            'title' => 'required|string|max:50',   // الحد الجديد
+            'author' => 'required|string|max:30',  // الحد الجديد
             'description' => 'nullable|string|max:1000',
             'price' => 'nullable|numeric|min:0',
             'book_type' => 'required|in:free,paid',
@@ -306,6 +303,7 @@ class BookController extends Controller
 
     /**
      * تعديل كتاب (Admin)
+     * 🔹 تأكد أن Validation على الواجهة تتوافق مع طول الأعمدة الجديد
      */
     public function update(Request $request, $id)
     {
@@ -314,6 +312,7 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
+        // يمكن إضافة Validation هنا إذا أردت
         $data = $request->only(['title','author','description','price','book_type','discount_rate','category_id']);
         $book->update($data);
 
