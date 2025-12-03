@@ -6,23 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('books', function (Blueprint $table) {
-            //
+            if (Schema::hasColumn('books', 'discount_rate')) {
+                $table->dropColumn('discount_rate');
+            }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('books', function (Blueprint $table) {
-            //
+            $table->float('discount_rate')->default(0);
         });
     }
 };
