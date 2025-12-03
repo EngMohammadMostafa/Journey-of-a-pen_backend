@@ -26,6 +26,30 @@ class AdminController extends Controller
     }
 
     /**
+     * 🔹 جلب مستخدم محدد عبر الـ ID (Admin)
+     * - يعيد بيانات المستخدم الأساسية.
+     * - محمي بميدلوير 'admin' عبر الراوت (routes/api.php).
+     */
+    public function getUserById($id)
+    {
+        $user = ReadingPlatformUser::select(
+            'id', 'username', 'email', 'age', 'gender', 'user_type', 'points', 'purchases_count', 'created_at'
+        )->find($id);
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المستخدم غير موجود'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'user' => $user
+        ]);
+    }
+
+    /**
      * إنشاء مستخدم جديد بواسطة الأدمن مع تطبيق قيود كلمة المرور مثل AuthController
      * ملاحظات:
      * - المستخدم الجديد دائماً user_type = 1 (مستخدم عادي)
@@ -152,4 +176,3 @@ class AdminController extends Controller
         ]);
     }
 }
-
