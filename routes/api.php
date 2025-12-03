@@ -88,7 +88,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('admin')->middleware('admin')->group(function () {
 
         // إدارة الأقسام
-        Route::post('/categories', [CategoryController::class, 'store']); // إنشاء قسم جديد
+        Route::post('/categories', [CategoryController::class, 'store']);   // إنشاء قسم جديد
+        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']); // حذف قسم + كل الكتب المرتبطة به
 
         // إدارة الكتب
         Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); // إضافة كتاب جديد
@@ -97,11 +98,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // إدارة المستخدمين
         Route::get('/users', [AdminController::class, 'getAllUsers']);       // عرض كل المستخدمين
-
-        // 🔹 إضافة: جلب مستخدم محدد عبر الـ ID (مفيد لصفحات العرض/التعديل)
-        Route::get('/users/{id}', [AdminController::class, 'getUserById']); // جلب مستخدم واحد
-
-        Route::post('/users', [AdminController::class, 'createUser']);       // إنشاء مستخدم جديد (دائمًا عادي)
+        Route::get('/users/{id}', [AdminController::class, 'getUserById']);  // جلب مستخدم محدد
+        Route::post('/users', [AdminController::class, 'createUser']);       // إنشاء مستخدم جديد
         Route::put('/users/{id}', [AdminController::class, 'updateUser']);   // تعديل بيانات مستخدم
         Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); // حذف مستخدم (لا يمكن حذف الأدمن الرئيسي)
 
@@ -113,53 +111,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/questions/{id}', [QuestionController::class,'update']);          // تعديل سؤال
         Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       // حذف سؤال
 
-        /*
-         * -------------------------
-         * مسارات عرض الأسئلة للأدمن
-         * -------------------------
-         */
-
-        // 1) يعيد كل أسئلة كتاب محدد مع جميع الإجابات (is_correct ظاهر)
+        // مسارات عرض الأسئلة للأدمن
         Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
-
-        // 2) يعيد كل أسئلة كتاب محدد مع الإجابات الصحيحة فقط (is_correct ظاهر)
         Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
-
-        // 3) يعيد سؤال محدد داخل كتاب محدد مع الإجابات (is_correct ظاهر)
         Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
-
-        /*
-         * 4) يعيد كل الأسئلة لكتاب محدد **بدون** الإجابات (مناسب لعرض جدول الأسئلة فقط)
-         */
         Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
-
-        /*
-         * 5) يعيد سؤال واحد حسب الـ id (مناسب لصفحة التعديل — يجلب بيانات السؤال فقط)
-         */
         Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
+        Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); // عرض كل الأسئلة بدون الإجابات
 
-        /*
-         * -------------------------
-         * 🔹 إضافة جديدة: يعيد كل الأسئلة من كل الكتب **بدون الإجابات** (Admin Dashboard)
-         * مثال استهلاك من الفرونت: GET /api/admin/questions
-         * يدعم Pagination: ?page=1&per_page=10
-         * يمكن لاحقاً إضافة فلترة: ?book_id=3 أو ?search=نص
-         */
-        Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']);
-
-        /*
-         * -------------------------
-         * مسارات عرض/إدارة الإجابات للأدمن
-         * ------------------------- 
-         */
-        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']);                // كل الإجابات (مع Pagination)
-        Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); // كل الإجابات لسؤال محدد
-        Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']);             // إجابة واحدة
-
-        // إدارة الإجابات (CRUD)
-        Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); // إضافة إجابة
-        Route::put('/answers/{id}', [AnswerController::class,'update']);                    // تعديل إجابة
-        Route::delete('/answers/{id}', [AnswerController::class,'destroy']);                // حذف إجابة
+        // إدارة الإجابات للأدمن
+        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); // كل الإجابات
+        Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); 
+        Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']); 
+        Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); 
+        Route::put('/answers/{id}', [AnswerController::class,'update']); 
+        Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
 
         // إدارة المكافآت/النقاط
         Route::post('/rewards', [RewardController::class,'store']);   // إضافة مكافأة
