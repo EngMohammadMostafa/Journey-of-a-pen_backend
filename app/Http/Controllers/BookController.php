@@ -161,6 +161,7 @@ class BookController extends Controller
      * 🔹 تم تعديل Validation لتتوافق مع طول الأعمدة الجديد:
      *      title => max:50
      *      author => max:30
+     * 🔹 تمت إزالة حقل 'discount_rate' من الCreation لأنك قررت حذفه
      */
     public function store(Request $request, $categoryId)
     {
@@ -176,7 +177,7 @@ class BookController extends Controller
             'price' => 'nullable|numeric|min:0',
             'book_type' => 'required|in:free,paid',
             'file' => 'required|file|mimes:pdf,epub|max:20480',
-            'discount_rate' => 'nullable|numeric|min:0|max:100'
+            // 'discount_rate' removed from validation because column removed
         ]);
 
         if ($validator->fails()) {
@@ -192,7 +193,7 @@ class BookController extends Controller
             'description' => $request->description,
             'price' => $request->price ?? 0,
             'number_of_likes' => 0,
-            'discount_rate' => $request->discount_rate ?? 0,
+            // 'discount_rate' removed from creation array
             'book_type' => $request->book_type,
             'file_path' => $path,
             'file_type' => $file->extension(),
@@ -304,6 +305,7 @@ class BookController extends Controller
     /**
      * تعديل كتاب (Admin)
      * 🔹 تأكد أن Validation على الواجهة تتوافق مع طول الأعمدة الجديد
+     * 🔹 تمت إزالة حقل 'discount_rate' من التحديث لأن العمود أزيل من DB
      */
     public function update(Request $request, $id)
     {
@@ -313,7 +315,7 @@ class BookController extends Controller
         }
 
         // يمكن إضافة Validation هنا إذا أردت
-        $data = $request->only(['title','author','description','price','book_type','discount_rate','category_id']);
+        $data = $request->only(['title','author','description','price','book_type','category_id']); // 'discount_rate' removed
         $book->update($data);
 
         return response()->json([
