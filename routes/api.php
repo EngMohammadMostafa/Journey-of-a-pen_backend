@@ -22,6 +22,11 @@ use App\Http\Controllers\CategoryController;
 | جميع المسارات المتعلقة بالمشروع:
 | auth, users, books, questions, admin, rewards ...
 | تم تقسيم المسارات حسب الحاجة: عامة، auth، admin.
+|
+| ملاحظة: أضفت مسارًا جديدًا بسيطًا لإرجاع "النقاط الكلية" فقط:
+|   GET /api/users/points
+| هذا المسار محمي بميدلوير auth:sanctum ويستدعي UserController@getTotalPoints
+|
 */
 
 /* ------------------------------
@@ -50,9 +55,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
     // بيانات المستخدم الحالي
-    Route::get('/users/me', [UserController::class, 'getCurrentUser']);      // معلومات المستخدم الحالي
+    Route::get('/users/me', [UserController::class, 'getCurrentUser']);      // معلومات المستخدم الحالي (يرجع حقل points ضمن user)
     Route::put('/users/me', [UserController::class, 'updateCurrentUser']);   // تعديل بيانات المستخدم الحالي
     Route::post('/users/me/change-password', [UserController::class, 'changePassword']); // تغيير كلمة المرور
+
+    // ======= مسار جديد: إعادة عدد النقاط الكلي فقط للمستخدم الحالي =======
+    // Route: GET /api/users/points
+    // Middleware: auth:sanctum
+    // الاستجابة: { "total_points": 120 }
+    Route::get('/users/points', [UserController::class, 'getTotalPoints']);
+    // ===================================================================
 
     // اقتباسات المستخدم
     Route::get('/quotes', [QuoteController::class, 'index']);  // عرض كل الاقتباسات
@@ -76,7 +88,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/books/{bookId}/session/submit', [UserBookAnswerController::class,'submitAnswers']);
     Route::post('/books/{bookId}/session/exit', [UserBookAnswerController::class,'exitSession']);
 
-    // الجوائز والنقاط
+    // الجوائز والنقاط (إن لم تستخدم Reward/Repoint يمكنك تجاهلها أو حذفها لاحقًا)
     Route::get('/rewards', [RewardController::class,'index']);           // عرض كل المكافآت
     Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); // استبدال مكافأة
 
