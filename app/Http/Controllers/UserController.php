@@ -11,6 +11,13 @@ class UserController extends Controller
 {
     /**
      * الحصول على بيانات المستخدم الحالي (مع كتب البروفايل)
+     *
+     * Route: GET /api/users/me
+     * Middleware: auth:sanctum
+     *
+     * الاستجابة تتضمن:
+     * - user.points => المجموع الكلي لنقاط المستخدم
+     * - user.books  => بيانات الكتب مع معلومات الـ pivot (liked, owned, downloaded_at)
      */
     public function getCurrentUser(Request $request)
     {
@@ -53,14 +60,41 @@ class UserController extends Controller
                 'age' => $user->age,
                 'gender' => $user->gender,
                 'user_type' => $user->user_type,
-                'points' => $user->points,
+                'points' => $user->points,           // <-- المجموع الكلي للنقاط
                 'purchases_count' => $user->purchases_count,
                 'books' => $books // الكتب في بروفايل المستخدم
             ]
         ]);
     }
 
+    /**
+     * إعادة عدد النقاط الكلي للمستخدم الحالي فقط (نقطة نهاية بسيط ومباشر)
+     *
+     * Route suggestion: GET /api/users/points
+     * Middleware: auth:sanctum
+     *
+     * الاستجابة:
+     * { "total_points": 120 }
+     *
+     * ملاحظة: لا تُعيد أي بيانات حسّاسة أخرى، وتُستخدم لعرض النقاط في صفحة البروفايل.
+     */
+    public function getTotalPoints(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'total_points' => (int) $user->points
+        ]);
+    }
+
     // بقية الدوال كما كانت (updateCurrentUser و changePassword) — لا تغيير عليهما هنا
+
+    /**
+     * تحديث بيانات المستخدم الحالي (username, age, gender)
+     *
+     * Route: PUT /api/users/me
+     * Middleware: auth:sanctum
+     */
     public function updateCurrentUser(Request $request)
     {
         $user = $request->user();
@@ -99,6 +133,14 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * تغيير كلمة المرور للمستخدم الحالي
+     *
+     * Route: POST /api/users/me/change-password
+     * Middleware: auth:sanctum
+     *
+     * متطلبات كلمة المرور: طول 8+، حرف كبير، حرف صغير، رقم، ورمز خاص
+     */
     public function changePassword(Request $request)
     {
         $user = $request->user();
