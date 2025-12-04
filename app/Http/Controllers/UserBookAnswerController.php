@@ -69,6 +69,7 @@ class UserBookAnswerController extends Controller
     {
         $user = $request->user();
 
+        // التحقق من صحة البيانات القادمة
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|integer|exists:questions,id',
             'answer_id' => 'required|integer|exists:answers,id'
@@ -81,7 +82,7 @@ class UserBookAnswerController extends Controller
         $questionId = (int)$request->input('question_id');
         $answerId = (int)$request->input('answer_id');
 
-        // التأكد أن السؤال من نفس الكتاب (ومن ضمن الثلاثة المختارة في الجلسة)
+        // التأكد أن السؤال من نفس الكتاب (ضمن الثلاثة المختارة في الجلسة)
         $expectedQuestions = Question::where('book_id', $bookId)->orderBy('id')->take(3)->pluck('id')->toArray();
         if (!in_array($questionId, $expectedQuestions, true)) {
             return response()->json(['message' => 'هذا السؤال غير صالح لهذه الجلسة'], 422);
@@ -104,7 +105,7 @@ class UserBookAnswerController extends Controller
             return response()->json(['message' => 'لقد أجبت على هذا السؤال سابقًا'], 409);
         }
 
-        // تحديد صحة الإجابة (معلومة داخلية)
+        // تحديد صحة الإجابة
         $isCorrect = (bool)$answer->is_correct;
 
         // حفظ سجل إجابة المستخدم
@@ -118,10 +119,8 @@ class UserBookAnswerController extends Controller
         ]);
 
         // منح النقطة فورياً إن كانت صحيحة
-        $pointsEarned = $isCorrect ? 1 : 0;
-        if ($pointsEarned > 0) {
-            // زيادة نقاط المستخدم
-            $user->increment('points', $pointsEarned);
+        if ($isCorrect) {
+            $user->increment('points', 1);
             $user->refresh();
         }
 
@@ -131,12 +130,11 @@ class UserBookAnswerController extends Controller
             ->where('completed', false)
             ->count();
 
-        // نعيد نتيجة إجابة المستخدم (is_correct) + السجل المخزون
+        // إعادة نتيجة إجابة المستخدم
         return response()->json([
             'message' => 'تم حفظ إجابتك',
             'record' => $record,
-            'is_correct' => $isCorrect,            // feedback للمستخدم على إجابته فقط
-            'points_earned' => $pointsEarned,
+            'is_correct' => $isCorrect,
             'total_points' => $user->points,
             'answered_count' => $answeredCount,
             'can_exit' => $answeredCount === 0
@@ -147,13 +145,13 @@ class UserBookAnswerController extends Controller
      * Submit all answers (Finish).
      * - يتحقق أن المستخدم أجاب على الأسئلة المطلوبة (3)
      * - يدعم إرسال الإجابات دفعة واحدة أو الاعتماد على السجلات الموجودة
-     * - يعين completed = true، ويضيف أي نقاط جديدة
+     * - يعين completed = true، ويحسب النقاط للجلسة ويحدث النقاط الكلية
      */
     public function submitAnswers(Request $request, $bookId)
     {
         $user = $request->user();
 
-        // الأسئلة المتوقعة للجلسة (ثلاثة حسب منطقتك)
+        // الأسئلة المتوقعة للجلسة (ثلاثة)
         $expectedQuestionIds = Question::where('book_id', $bookId)
             ->orderBy('id')
             ->take(3)
@@ -177,7 +175,7 @@ class UserBookAnswerController extends Controller
 
         DB::beginTransaction();
         try {
-            // لو أرسل المستخدم إجابات جديدة في body، نعالجها ونُدخل أي سجلات مفقودة
+            // معالجة الإجابات الجديدة إذا أرسلها المستخدم
             if (is_array($incomingAnswers) && count($incomingAnswers) > 0) {
                 $validator = Validator::make($request->all(), [
                     'answers' => 'required|array',
@@ -206,7 +204,7 @@ class UserBookAnswerController extends Controller
                         return response()->json(['message' => "الإجابة {$aId} لا تنتمي للسؤال {$qId}"], 422);
                     }
 
-                    // إذا لم يكن قد تم تسجيل إجابة لهذا السؤال مسبقًا، نضيفها
+                    // إضافة السجلات المفقودة
                     $exists = UserBookAnswer::where([
                         'user_id' => $user->id,
                         'book_id' => $bookId,
@@ -236,7 +234,7 @@ class UserBookAnswerController extends Controller
                 $answeredIds = $userAnswers->pluck('question_id')->unique()->sort()->values()->toArray();
             }
 
-            // تأكد أن المستخدم أجاب على كل الأسئلة المتوقعة
+            // تأكد أن المستخدم أجاب على كل الأسئلة
             sort($expectedQuestionIds);
             sort($answeredIds);
             if ($answeredIds !== $expectedQuestionIds) {
@@ -248,13 +246,20 @@ class UserBookAnswerController extends Controller
                 ], 422);
             }
 
-            // إذا توجد نقاط جديدة نزوّد بها المستخدم
-            if ($newPoints > 0) {
-                $user->increment('points', $newPoints);
+            // حساب نقاط الجلسة الحالية
+            $sessionPoints = UserBookAnswer::where('user_id', $user->id)
+                ->where('book_id', $bookId)
+                ->where('completed', false)
+                ->where('is_correct', true)
+                ->count();
+
+            // إضافة النقاط للجلسة إلى المجموع الكلي
+            if ($sessionPoints > 0) {
+                $user->increment('points', $sessionPoints);
                 $user->refresh();
             }
 
-            // تعيين completed = true لكل سجلات هذه الجلسة
+            // تعيين completed = true لكل سجلات الجلسة
             UserBookAnswer::where('user_id', $user->id)
                 ->where('book_id', $bookId)
                 ->where('completed', false)
@@ -266,10 +271,12 @@ class UserBookAnswerController extends Controller
             return response()->json(['message' => 'فشل إنهاء الجلسة', 'error' => $e->getMessage()], 500);
         }
 
+        // إعادة النقاط بعد إنهاء الجلسة
         return response()->json([
             'success' => true,
             'message' => 'تم إنهاء الجلسة بنجاح.',
-            'total_points' => $user->fresh()->points
+            'session_points' => $sessionPoints,    // نقاط هذه الجلسة فقط
+            'total_points' => $user->points        // مجموع النقاط الكلي
         ]);
     }
 
