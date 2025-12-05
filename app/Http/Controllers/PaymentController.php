@@ -19,7 +19,7 @@ class PaymentController extends Controller
             return response()->json(['message'=>'هذا الكتاب مجاني'], 400);
         }
 
-        $amountCents = intval($book->price) * 100; // تأكدي من عملة السعر
+        $amountCents = intval($book->price) * 100; 
 
         Stripe::setApiKey(config('services.stripe.secret'));
 
