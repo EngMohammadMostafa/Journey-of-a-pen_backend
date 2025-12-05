@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Validator;
 
 class RepointController extends Controller
 {
-    // Admin: اضافة سجل نقاط لجوائز
+    
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -27,7 +27,7 @@ class RepointController extends Controller
         return response()->json(['message'=>'تم اضافة سجل النقاط','repoint'=>$rp], 201);
     }
 
-    // عرض سجلات نقاط لجوائز معينة أو كلها
+  
     public function index()
     {
         $items = Repoint::with('reward')->get();

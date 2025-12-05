@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 class QuoteController extends Controller
 {
-    // 📖 استعراض جميع الاقتباسات
+    
     public function index()
     {
         $quotes = Quote::latest()->get();
@@ -21,16 +21,16 @@ class QuoteController extends Controller
         ], 200);
     }
 
-    // ➕ نشر اقتباس جديد
+    
     public function store(Request $request)
     {
-        // ✅ التحقق من صحة البيانات
+       
         $request->validate([
-            'text' => 'required|string|max:255',       // النص لا يزيد عن 255 حرف
-            'book_name' => 'required|string|max:50'    // تم تعديل الحد الأقصى من 20 إلى 50 حرف
+            'text' => 'required|string|max:255',       
+            'book_name' => 'required|string|max:50'   
         ]);
 
-        // إنشاء الاقتباس وربطه بالمستخدم الحالي
+       
         $quote = Quote::create([
             'text' => $request->text,
             'book_name' => $request->book_name,
@@ -44,10 +44,10 @@ class QuoteController extends Controller
         ], 201);
     }
 
-    // 🗑️ حذف اقتباس (للإدمن فقط)
+   
     public function destroy($id)
     {
-        // التحقق من صلاحية المستخدم (أدمن فقط)
+        
         if (Auth::user()->user_type !== 2) {
             return response()->json([
                 'success' => false,
@@ -57,7 +57,7 @@ class QuoteController extends Controller
 
         $quote = Quote::find($id);
         
-        // التحقق من وجود الاقتباس
+        
         if (!$quote) {
             return response()->json([
                 'success' => false,
@@ -65,7 +65,7 @@ class QuoteController extends Controller
             ], 404);
         }
 
-        // حذف الاقتباس
+        
         $quote->delete();
 
         return response()->json([

@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Validator;
 
 class RewardController extends Controller
 {
-    // Admin: انشاء جائزة
+   
     public function store(Request $request)
     {
-        // admin middleware
+        
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:20',
             'number_of_points' => 'required|integer|min:1',
@@ -27,14 +27,14 @@ class RewardController extends Controller
         return response()->json(['message'=>'تم إنشاء الجائزة','reward'=>$reward], 201);
     }
 
-    // عرض الجوائز (عام)
+    
     public function index()
     {
         $rewards = Reward::with('repoints')->get();
         return response()->json(['rewards'=>$rewards]);
     }
 
-    // مستخدم يريد استبدال نقاطه بجائزة (redeem)
+    
     public function redeem(Request $request, $rewardId)
     {
         $user = $request->user();
@@ -45,10 +45,10 @@ class RewardController extends Controller
             return response()->json(['message'=>'ليس لديك نقاط كافية'], 403);
         }
 
-        // خصم النقاط
+       
         $user->decrement('points', $reward->number_of_points);
 
-        // ربط الجائزة بالمستخدم (يمكن أن يكون لدينا علاقة مباشرة)
+       
         $reward->user_id = $user->id;
         $reward->save();
 
