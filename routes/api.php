@@ -72,62 +72,66 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/rewards', [RewardController::class,'index']);         
     Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); 
 
-    /* -------------------------------
-       👑 مسارات الأدمن (Admin)
-       - هذه المسارات محمية بميدلوير 'admin'
-       - الأدمن الوحيد يمكنه إنشاء مستخدمين عاديين فقط
-    -------------------------------- */
+   
+
+
+
+
     Route::prefix('admin')->middleware('admin')->group(function () {
 
-        // إدارة الأقسام
-        Route::post('/categories', [CategoryController::class, 'store']);   // إنشاء قسم جديد
-        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']); // حذف قسم + كل الكتب المرتبطة به
+        
+        Route::post('/categories', [CategoryController::class, 'store']);   
+        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']); 
+        
 
-        // إدارة الكتب
-        Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); // إضافة كتاب جديد
-        Route::put('/books/{id}', [BookController::class, 'update']);                     // تعديل كتاب
-        Route::delete('/books/{id}', [BookController::class, 'destroy']);                // حذف كتاب
+        Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); 
+        Route::put('/books/{id}', [BookController::class, 'update']);                     
+        Route::delete('/books/{id}', [BookController::class, 'destroy']);                
 
-        // إدارة المستخدمين
-        Route::get('/users', [AdminController::class, 'getAllUsers']);       // عرض كل المستخدمين
-        Route::get('/users/{id}', [AdminController::class, 'getUserById']);  // جلب مستخدم محدد
-        Route::post('/users', [AdminController::class, 'createUser']);       // إنشاء مستخدم جديد
-        Route::put('/users/{id}', [AdminController::class, 'updateUser']);   // تعديل بيانات مستخدم
-        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); // حذف مستخدم (لا يمكن حذف الأدمن الرئيسي)
+        
+        Route::get('/users', [AdminController::class, 'getAllUsers']);       
+        Route::get('/users/{id}', [AdminController::class, 'getUserById']);  
+        Route::post('/users', [AdminController::class, 'createUser']);       
+        Route::put('/users/{id}', [AdminController::class, 'updateUser']);   
+        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); 
 
-        // إدارة الاقتباسات
-        Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); // حذف اقتباس
+       
+        Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); 
 
-        // إدارة الأسئلة (CRUD للأدمن)
-        Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); // إضافة سؤال
-        Route::put('/questions/{id}', [QuestionController::class,'update']);          // تعديل سؤال
-        Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       // حذف سؤال
+        
 
-        // مسارات عرض الأسئلة للأدمن
+        Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); 
+        Route::put('/questions/{id}', [QuestionController::class,'update']);          
+        Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       
+
+
+        
         Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
         Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
         Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
         Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
         Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
-        Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); // عرض كل الأسئلة بدون الإجابات
+        Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); 
 
-        // إدارة الإجابات للأدمن
-        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); // كل الإجابات
+
+        
+        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); 
         Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); 
         Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']); 
         Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); 
         Route::put('/answers/{id}', [AnswerController::class,'update']); 
         Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
 
-        // إدارة المكافآت/النقاط
-        Route::post('/rewards', [RewardController::class,'store']);   // إضافة مكافأة
-        Route::post('/repoints', [RepointController::class,'store']); // إضافة نقاط
-        Route::get('/repoints', [RepointController::class,'index']);  // عرض النقاط
+       
+
+        Route::post('/rewards', [RewardController::class,'store']);   
+        Route::post('/repoints', [RepointController::class,'store']); 
+        Route::get('/repoints', [RepointController::class,'index']);  
     });
 });
 
-/* ------------------------------
-   رابط عام لخدمة الملفات (signed URL)
---------------------------------- */
+
+
+
 Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
-     ->name('books.serveDownload'); // رابط تحميل الكتاب مؤقتًا للمستخدم
+     ->name('books.serveDownload'); 
