@@ -9,10 +9,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
-    /**
-     * الحصول على قائمة جميع المستخدمين
-     * يمكن للأدمن فقط الوصول لهذا endpoint
-     */
+    
     public function getAllUsers()
     {
         $users = ReadingPlatformUser::select(
@@ -25,11 +22,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * 🔹 جلب مستخدم محدد عبر الـ ID (Admin)
-     * - يعيد بيانات المستخدم الأساسية.
-     * - محمي بميدلوير 'admin' عبر الراوت (routes/api.php).
-     */
+    
     public function getUserById($id)
     {
         $user = ReadingPlatformUser::select(
@@ -49,13 +42,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * إنشاء مستخدم جديد بواسطة الأدمن مع تطبيق قيود كلمة المرور مثل AuthController
-     * ملاحظات:
-     * - المستخدم الجديد دائماً user_type = 1 (مستخدم عادي)
-     * - age و gender إلزامية لتجنب أخطاء قاعدة البيانات
-     * - password يجب أن يكون قوي ويحتوي على: حرف كبير، حرف صغير، رقم، ورمز خاص
-     */
+   
     public function createUser(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -70,19 +57,19 @@ class AdminController extends Controller
             'password_confirmation.same' => 'كلمة المرور وتأكيدها غير متطابقين.'
         ]);
 
-        // التحقق من صحة البيانات
+        
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // إنشاء المستخدم الجديد كـ مستخدم عادي
+        
         $user = ReadingPlatformUser::create([
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'age' => $request->age,
             'gender' => $request->gender,
-            'user_type' => 1, // دائماً مستخدم عادي
+            'user_type' => 1, 
             'points' => 0,
             'purchases_count' => 0
         ]);
@@ -103,10 +90,7 @@ class AdminController extends Controller
         ], 201);
     }
 
-    /**
-     * تحديث بيانات مستخدم موجود
-     * يمكن أيضاً تحديث كلمة المرور بنفس القيود
-     */
+   
     public function updateUser(Request $request, $id)
     {
         $user = ReadingPlatformUser::find($id);
@@ -122,7 +106,7 @@ class AdminController extends Controller
             'user_type' => 'sometimes|in:1,2',
             'points' => 'sometimes|integer|min:0',
             'purchases_count' => 'sometimes|integer|min:0',
-            // تحديث كلمة المرور بنفس القيود
+        
             'password' => 'sometimes|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/',
             'password_confirmation' => 'sometimes|required_with:password|same:password'
         ], [
@@ -134,7 +118,7 @@ class AdminController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // تحديث البيانات مع الاحتفاظ بالقيم القديمة إذا لم تُرسل جديدة
+        
         $user->update([
             'username' => $request->username ?? $user->username,
             'email' => $request->email ?? $user->email,
@@ -152,10 +136,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * حذف مستخدم
-     * لا يمكن حذف الأدمن الرئيسي
-     */
+    
     public function deleteUser($id)
     {
         $user = ReadingPlatformUser::find($id);
@@ -163,7 +144,7 @@ class AdminController extends Controller
             return response()->json(['message' => 'المستخدم غير موجود'], 404);
         }
 
-        // لا يمكن حذف الأدمن الرئيسي
+        
         if ($user->user_type == 2) {
             return response()->json(['message' => 'لا يمكن حذف الأدمن الرئيسي'], 403);
         }
