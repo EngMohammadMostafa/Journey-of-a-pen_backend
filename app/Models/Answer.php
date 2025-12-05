@@ -11,7 +11,7 @@ class Answer extends Model
 
     protected $fillable = ['answer_text', 'is_correct', 'question_id'];
 
-    // علاقة الإجابة بالسؤال
+    
     public function question()
     {
         return $this->belongsTo(Question::class);
