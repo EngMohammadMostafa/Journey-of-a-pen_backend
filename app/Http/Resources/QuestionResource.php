@@ -7,10 +7,7 @@ use App\Http\Resources\AnswerResource;
 
 class QuestionResource extends JsonResource
 {
-    /**
-     * تحويل نموذج السؤال إلى مصفوفة JSON
-     * نحمِل الإجابات باستخدام AnswerResource (وبالتالي تتحكم في is_correct)
-     */
+    
     public function toArray($request)
     {
         return [
