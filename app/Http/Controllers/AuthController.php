@@ -10,18 +10,15 @@ use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
-    /**
-     * تسجيل مستخدم جديد
-     * 🔹 ملاحظة: لن يتم إنشاء توكن عند التسجيل، التوكن يُنشأ فقط عند تسجيل الدخول
-     */
+    
     public function register(Request $request)
     {
-        // التحقق من البيانات المدخلة
+        
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|max:20',
             'email' => 'required|email|unique:reading_platform_users',
             'password' => 'required|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/',
-            'password_confirmation' => 'required|same:password', // تأكيد كلمة المرور
+            'password_confirmation' => 'required|same:password',
             'age' => 'required|integer|min:10',
             'gender' => ['required', Rule::in(['male', 'female'])]
         ], [
@@ -29,26 +26,26 @@ class AuthController extends Controller
             'password_confirmation.same' => 'كلمة المرور وتأكيدها غير متطابقين.'
         ]);
 
-        // إذا كان هناك أخطاء
+        
         if ($validator->fails()) {
             return response()->json([
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        // إنشاء المستخدم الجديد
+        
         $user = ReadingPlatformUser::create([
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'age' => $request->age,
             'gender' => $request->gender,
-            'user_type' => 1, // مستخدم عادي
+            'user_type' => 1, 
             'points' => 0,
             'purchases_count' => 0
         ]);
 
-        // ✅ لا ننشئ التوكن هنا
+        
 
         return response()->json([
             'user' => [
@@ -65,10 +62,7 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * تسجيل الدخول
-     * 🔹 هنا فقط يتم إنشاء التوكن بعد التحقق من بيانات المستخدم
-     */
+   
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -82,17 +76,17 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // البحث عن المستخدم
+       
         $user = ReadingPlatformUser::where('email', $request->email)->first();
 
-        // التحقق من كلمة المرور
+        
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'بيانات الدخول غير صحيحة'
             ], 401);
         }
 
-        // إنشاء التوكن بعد التحقق من الدخول
+        
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -110,12 +104,10 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * تسجيل الخروج
-     */
+    
     public function logout(Request $request)
     {
-        // حذف التوكن الحالي للمستخدم
+        
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
