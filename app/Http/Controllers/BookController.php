@@ -14,9 +14,7 @@ use Illuminate\Support\Facades\URL;
 
 class BookController extends Controller
 {
-    /**
-     * 🟢 جلب كل الأقسام مع الكتب المرتبطة بها
-     */
+   
     public function getCategories()
     {
         $categories = Category::with('books')->get();
@@ -27,10 +25,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * 🟢 جلب الكتب حسب القسم
-     * Route: GET /api/categories/{categoryId}/books
-     */
+    
     public function getBooksByCategory($categoryId)
     {
         $category = Category::with('books')->find($categoryId);
@@ -46,9 +41,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * عرض كل الكتب مع عدد الإعجابات
-     */
+    
     public function index()
     {
         $books = Book::with('category')->get();
@@ -64,7 +57,7 @@ class BookController extends Controller
                 'file_type' => $book->file_type,
                 'file_size' => $book->file_size,
                 'category' => $book->category->name ?? null,
-                'likes_count' => $book->likesCount(), // العدد الكلي للإعجابات
+                'likes_count' => $book->likesCount(), 
             ];
         });
 
@@ -74,9 +67,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * عرض تفاصيل كتاب محدد مع عدد الإعجابات
-     */
+    
     public function show($id)
     {
         $book = Book::with('category')->find($id);
@@ -104,10 +95,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * مسار بديل لإرجاع كتاب مع عدد الإعجابات
-     * GET /api/books/{id}/with-likes
-     */
+    
     public function getBookWithLikes($id)
     {
         $book = Book::with('category')->find($id);
@@ -135,9 +123,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * كتب مملوكة للمستخدم
-     */
+    
     public function getUserBooks(Request $request)
     {
         $user = $request->user();
@@ -156,13 +142,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * إنشاء كتاب (Admin)
-     * 🔹 تم تعديل Validation لتتوافق مع طول الأعمدة الجديد:
-     *      title => max:50
-     *      author => max:30
-     * 🔹 تمت إزالة حقل 'discount_rate' من الCreation لأنك قررت حذفه
-     */
+    
     public function store(Request $request, $categoryId)
     {
         $category = Category::find($categoryId);
@@ -171,13 +151,13 @@ class BookController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:50',   // الحد الجديد
-            'author' => 'required|string|max:30',  // الحد الجديد
+            'title' => 'required|string|max:50',  
+            'author' => 'required|string|max:30',  
             'description' => 'nullable|string|max:1000',
             'price' => 'nullable|numeric|min:0',
             'book_type' => 'required|in:free,paid',
             'file' => 'required|file|mimes:pdf,epub|max:20480',
-            // 'discount_rate' removed from validation because column removed
+           
         ]);
 
         if ($validator->fails()) {
@@ -193,7 +173,7 @@ class BookController extends Controller
             'description' => $request->description,
             'price' => $request->price ?? 0,
             'number_of_likes' => 0,
-            // 'discount_rate' removed from creation array
+           
             'book_type' => $request->book_type,
             'file_path' => $path,
             'file_type' => $file->extension(),
@@ -204,9 +184,7 @@ class BookController extends Controller
         return response()->json(['message' => 'تم إضافة الكتاب بنجاح', 'book' => $book], 201);
     }
 
-    /**
-     * توليد رابط تحميل مؤقت (signed URL)
-     */
+    
     public function generateDownloadLink(Request $request, $id)
     {
         $user = $request->user();
@@ -216,7 +194,7 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        // تحقق من امتلاك الكتاب
+        
         if ($book->book_type === 'paid') {
             $pivot = DB::table('book_user')
                 ->where('book_id', $book->id)
@@ -234,7 +212,7 @@ class BookController extends Controller
                     ->update(['downloaded_at' => now()]);
             }
         } else {
-            // الكتاب مجاني
+            
             $exists = DB::table('book_user')
                 ->where('book_id', $book->id)
                 ->where('user_id', $user->id)
@@ -276,9 +254,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * Serve file باستخدام signed URL
-     */
+   
     public function serveDownload(Request $request, $id, $userId)
     {
         if (! $request->hasValidSignature()) {
@@ -302,11 +278,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * تعديل كتاب (Admin)
-     * 🔹 تأكد أن Validation على الواجهة تتوافق مع طول الأعمدة الجديد
-     * 🔹 تمت إزالة حقل 'discount_rate' من التحديث لأن العمود أزيل من DB
-     */
+    
     public function update(Request $request, $id)
     {
         $book = Book::find($id);
@@ -314,8 +286,8 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        // يمكن إضافة Validation هنا إذا أردت
-        $data = $request->only(['title','author','description','price','book_type','category_id']); // 'discount_rate' removed
+        
+        $data = $request->only(['title','author','description','price','book_type','category_id']); 
         $book->update($data);
 
         return response()->json([
@@ -325,9 +297,7 @@ class BookController extends Controller
         ]);
     }
 
-    /**
-     * حذف كتاب (Admin)
-     */
+    
     public function destroy($id)
     {
         $book = Book::find($id);
