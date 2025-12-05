@@ -53,25 +53,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
 
     Route::get('/books', [BookController::class, 'index']);                         
-    Route::get('/books/{id}', [BookController::class, 'show']);                     // تفاصيل كتاب
-    Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); // تفاصيل كتاب + عدد likes
-    Route::get('/me/books', [BookController::class, 'getUserBooks']);              // كتب المستخدم المملوكة
-
-    // تحميل كتاب مؤقت بعد التحقق من الملكية
+    Route::get('/books/{id}', [BookController::class, 'show']);                     
+    Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); 
+    Route::get('/me/books', [BookController::class, 'getUserBooks']);              
+  
     Route::post('/books/{id}/download', [BookController::class, 'generateDownloadLink']);
 
-    // الأسئلة الخاصة بالكتاب (المستخدم العادي)
+    
     Route::get('/books/{bookId}/questions', [QuestionController::class, 'getBookQuestions']);
 
-    // جلسات الإجابة على الأسئلة (للمستخدم العادي)
+   
     Route::post('/books/{bookId}/session/start', [UserBookAnswerController::class,'startSession']);
     Route::post('/books/{bookId}/session/answer', [UserBookAnswerController::class,'recordAnswer']);
     Route::post('/books/{bookId}/session/submit', [UserBookAnswerController::class,'submitAnswers']);
     Route::post('/books/{bookId}/session/exit', [UserBookAnswerController::class,'exitSession']);
 
-    // الجوائز والنقاط (إن لم تستخدم Reward/Repoint يمكنك تجاهلها أو حذفها لاحقًا)
-    Route::get('/rewards', [RewardController::class,'index']);           // عرض كل المكافآت
-    Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); // استبدال مكافأة
+    
+    Route::get('/rewards', [RewardController::class,'index']);         
+    Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); 
 
     /* -------------------------------
        👑 مسارات الأدمن (Admin)
