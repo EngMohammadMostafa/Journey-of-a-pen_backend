@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('book_user', function (Blueprint $table) {
-            // نضيف owned و downloaded_at إن لم يكونا موجودين
+           
             if (!Schema::hasColumn('book_user', 'owned')) {
                 $table->boolean('owned')->default(false)->after('liked');
             }

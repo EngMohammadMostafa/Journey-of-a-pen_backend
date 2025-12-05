@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('author', 20);
             $table->string('title', 20);
             $table->string('description', 255)->nullable();
-            $table->integer('price')->default(0); // int(10)
+            $table->integer('price')->default(0); 
             $table->integer('number_of_likes')->default(0);
             $table->float('discount_rate')->default(0);
             $table->enum('book_type', ['free', 'paid'])->default('free');

@@ -6,9 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * تغيير طول عمود book_name إلى 50
-     */
+    
     public function up(): void
     {
         Schema::table('quotes', function (Blueprint $table) {
@@ -16,9 +14,7 @@ return new class extends Migration
         });
     }
 
-    /**
-     * إعادة طول العمود إلى 20 في حال التراجع
-     */
+    
     public function down(): void
     {
         Schema::table('quotes', function (Blueprint $table) {

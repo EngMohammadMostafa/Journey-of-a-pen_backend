@@ -8,70 +8,51 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\BookController;
-use App\Http\Controllers\QuestionController; // تحكم بالأسئلة
-use App\Http\Controllers\AnswerController;   // تحكم بالإجابات
+use App\Http\Controllers\QuestionController; 
+use App\Http\Controllers\AnswerController;  
 use App\Http\Controllers\UserBookAnswerController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\RepointController;
 use App\Http\Controllers\CategoryController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-| جميع المسارات المتعلقة بالمشروع:
-| auth, users, books, questions, admin, rewards ...
-| تم تقسيم المسارات حسب الحاجة: عامة، auth، admin.
-|
-| ملاحظة: أضفت مسارًا جديدًا بسيطًا لإرجاع "النقاط الكلية" فقط:
-|   GET /api/users/points
-| هذا المسار محمي بميدلوير auth:sanctum ويستدعي UserController@getTotalPoints
-|
-*/
 
-/* ------------------------------
-   مسارات مفتوحة (بدون auth)
--------------------------------- */
+
+
 Route::get('/', function () {
     return response()->json(['message' => 'API is running']);
 });
 
-// مسارات التسجيل والدخول
+
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']); // تسجيل مستخدم جديد
-    Route::post('/login', [AuthController::class, 'login']);       // تسجيل الدخول
+    Route::post('/register', [AuthController::class, 'register']); 
+    Route::post('/login', [AuthController::class, 'login']);       
 });
 
-// الأقسام متاحة للعامة
-Route::get('/categories', [CategoryController::class, 'index']);      // عرض كل الأقسام
-Route::get('/categories/{id}', [CategoryController::class, 'show']); // عرض تفاصيل قسم معين
 
-/* ------------------------------
-   مسارات تتطلب مصادقة (auth:sanctum)
--------------------------------- */
+Route::get('/categories', [CategoryController::class, 'index']);      
+Route::get('/categories/{id}', [CategoryController::class, 'show']); 
+
+
+
 Route::middleware(['auth:sanctum'])->group(function () {
 
     // تسجيل الخروج
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
     // بيانات المستخدم الحالي
-    Route::get('/users/me', [UserController::class, 'getCurrentUser']);      // معلومات المستخدم الحالي (يرجع حقل points ضمن user)
-    Route::put('/users/me', [UserController::class, 'updateCurrentUser']);   // تعديل بيانات المستخدم الحالي
-    Route::post('/users/me/change-password', [UserController::class, 'changePassword']); // تغيير كلمة المرور
+    Route::get('/users/me', [UserController::class, 'getCurrentUser']);      
+    Route::put('/users/me', [UserController::class, 'updateCurrentUser']);   
+    Route::post('/users/me/change-password', [UserController::class, 'changePassword']); 
 
-    // ======= مسار جديد: إعادة عدد النقاط الكلي فقط للمستخدم الحالي =======
-    // Route: GET /api/users/points
-    // Middleware: auth:sanctum
-    // الاستجابة: { "total_points": 120 }
+    
     Route::get('/users/points', [UserController::class, 'getTotalPoints']);
-    // ===================================================================
+   
+    
+    Route::get('/quotes', [QuoteController::class, 'index']);  
+    Route::post('/quotes', [QuoteController::class, 'store']); 
+    
 
-    // اقتباسات المستخدم
-    Route::get('/quotes', [QuoteController::class, 'index']);  // عرض كل الاقتباسات
-    Route::post('/quotes', [QuoteController::class, 'store']); // إضافة اقتباس جديد
-
-    // جلب الكتب
-    Route::get('/books', [BookController::class, 'index']);                         // كل الكتب مع عدد الإعجابات
+    Route::get('/books', [BookController::class, 'index']);                         
     Route::get('/books/{id}', [BookController::class, 'show']);                     // تفاصيل كتاب
     Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); // تفاصيل كتاب + عدد likes
     Route::get('/me/books', [BookController::class, 'getUserBooks']);              // كتب المستخدم المملوكة

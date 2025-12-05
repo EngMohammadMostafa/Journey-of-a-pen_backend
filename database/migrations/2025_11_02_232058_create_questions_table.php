@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('questions', function (Blueprint $table) {
             $table->id();
             $table->string('question_text', 255);
-            $table->string('answer', 255)->nullable(); // ✅ الإجابة الصحيحة (كما طلبت)
+            $table->string('answer', 255)->nullable(); 
             $table->foreignId('book_id')->constrained('books')->onDelete('cascade');
             $table->timestamps();
         });

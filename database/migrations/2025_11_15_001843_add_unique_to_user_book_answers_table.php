@@ -8,9 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // نضيف قيد فريد على الثلاثي user_id, book_id, question_id
+       
         Schema::table('user_book_answers', function (Blueprint $table) {
-            // نتأكد ألا يكون القيد موجوداً مسبقاً لتفادي خطأ عند إعادة التشغيل
+          
             $sm = Schema::getConnection()->getDoctrineSchemaManager();
             $indexes = $sm->listTableIndexes('user_book_answers');
 

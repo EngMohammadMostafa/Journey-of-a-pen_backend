@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('questions', function (Blueprint $table) {
-            $table->dropColumn('answer'); // إزالة العمود
+            $table->dropColumn('answer'); 
         });
     }
 
     public function down(): void
     {
         Schema::table('questions', function (Blueprint $table) {
-            $table->string('answer')->nullable(); // لإرجاع العمود إذا تم التراجع
+            $table->string('answer')->nullable(); 
         });
     }
 };
