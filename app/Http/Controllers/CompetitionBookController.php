@@ -17,7 +17,7 @@ class CompetitionBookController extends Controller
     {
         $competition = Competition::find($competitionId);
 
-        if (! $competition || $competition->status !== 'active') {
+        if (!$competition || $competition->status !== 'active') {
             return response()->json(['message' => 'المسابقة غير متاحة'], 403);
         }
 
@@ -27,9 +27,13 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'تم الوصول للعدد الأعظمي للمشاركين'], 403);
         }
 
+        // Validation للملف
         $request->validate([
             'title' => 'required|string|max:50',
-            'file'  => 'required|file|mimes:pdf,epub|max:20480',
+            'file'  => 'required|file|mimes:pdf|max:20480',
+        ], [
+            'file.required' => 'يجب إرفاق ملف الكتاب (PDF)',
+            'file.mimes' => 'نوع الملف يجب أن يكون PDF فقط',
         ]);
 
         $file = $request->file('file');
@@ -52,12 +56,12 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * عرض كتب المسابقة للمستخدم
+     * عرض كتب المسابقة للمستخدم مع رابط التحميل
      */
     public function index($competitionId)
     {
         $books = CompetitionBook::where('competition_id', $competitionId)
-            ->select('competition_book_id', 'title', 'likes_count')
+            ->select('competition_book_id', 'title', 'likes_count', 'file_path')
             ->orderByDesc('likes_count')
             ->get();
 
@@ -68,21 +72,43 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * وضع لايك (مرة واحدة فقط)
+     * وضع لايك أو إلغاء اللايك
      */
     public function like(Request $request, $competitionBookId)
     {
         $userId = $request->user()->id;
 
-        $exists = DB::table('competition_book_user')
+        $existing = DB::table('competition_book_user')
             ->where('competition_book_id', $competitionBookId)
             ->where('user_id', $userId)
-            ->exists();
+            ->first();
 
-        if ($exists) {
-            return response()->json(['message' => 'لقد قمت بالإعجاب مسبقًا'], 409);
+        if ($existing) {
+            // إذا موجود مسبقاً، نقوم بعكس حالة اللايك
+            $newLiked = !$existing->liked;
+            DB::table('competition_book_user')
+                ->where('competition_book_id', $competitionBookId)
+                ->where('user_id', $userId)
+                ->update([
+                    'liked' => $newLiked,
+                    'updated_at' => now(),
+                ]);
+
+            // تحديث عدد اللايكات
+            $likesCount = DB::table('competition_book_user')
+                ->where('competition_book_id', $competitionBookId)
+                ->where('liked', true)
+                ->count();
+
+            CompetitionBook::where('competition_book_id', $competitionBookId)->update(['likes_count' => $likesCount]);
+
+            return response()->json([
+                'message' => $newLiked ? 'تم وضع لايك' : 'تم إلغاء اللايك',
+                'likes_count' => $likesCount
+            ]);
         }
 
+        // إذا لم يضع لايك من قبل
         DB::table('competition_book_user')->insert([
             'competition_book_id' => $competitionBookId,
             'user_id' => $userId,
@@ -91,10 +117,13 @@ class CompetitionBookController extends Controller
             'updated_at' => now(),
         ]);
 
-        CompetitionBook::where('competition_book_id', $competitionBookId)
-            ->increment('likes_count');
+        // تحديث عدد اللايكات
+        CompetitionBook::where('competition_book_id', $competitionBookId)->increment('likes_count');
 
-        return response()->json(['message' => 'تم وضع لايك']);
+        return response()->json([
+            'message' => 'تم وضع لايك',
+            'likes_count' => CompetitionBook::find($competitionBookId)->likes_count
+        ]);
     }
 
     /**
