@@ -9,13 +9,8 @@ class Competition extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'name',
-        'status',
-        'startdate',
-        'enddate',
-        'max_user'
-    ];
+    protected $fillable = ['name', 'status', 'startdate', 'enddate', 'max_user'];
+
 
     /**
      * العلاقة:
