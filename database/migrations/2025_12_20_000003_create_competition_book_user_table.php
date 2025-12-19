@@ -11,28 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('competition_books', function (Blueprint $table) {
-
-            $table->id('competition_book_id');
-
-            $table->foreignId('competition_id')
-                  ->constrained('competitions')
+        Schema::create('competition_book_user', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('competition_book_id');
+            $table->foreign('competition_book_id')
+                  ->references('competition_book_id')
+                  ->on('competition_books')
                   ->cascadeOnDelete();
-
+        
             $table->foreignId('user_id')
                   ->constrained('users')
                   ->cascadeOnDelete();
-
-            $table->string('title', 50);
-
-            $table->string('file_path', 255);
-            $table->string('file_type', 20);
-            $table->bigInteger('file_size', 20);
-
-            $table->integer('likes_count')->default(0);
-
+        
+            $table->boolean('liked')->default(true);
+        
+            $table->unique(['competition_book_id', 'user_id']);
+        
             $table->timestamps();
         });
+        
     }
 
     /**
@@ -40,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('competition_books');
+        Schema::dropIfExists('competition_book_user');
     }
 };

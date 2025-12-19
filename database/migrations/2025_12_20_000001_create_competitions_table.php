@@ -17,10 +17,11 @@ return new class extends Migration
             $table->string('name', 50);
             $table->enum('status', ['active', 'inactive', 'finished']);
 
-            $table->timestamp('startdate');
-            $table->timestamp('enddate');
+            $table->timestamp('startdate')->nullable();
+            $table->timestamp('enddate')->nullable();
+            
 
-            $table->integer('max_user', 20);
+            $table->integer('max_user');
 
             $table->timestamps();
         });
