@@ -9,7 +9,9 @@ class CompetitionController extends Controller
 {
     /**
      * عرض المسابقات المتاحة للمستخدم العادي
-     * يسمح فقط بالمسابقات الفعالة وحالياً ضمن تواريخها
+     * فقط المسابقات:
+     * - status = active
+     * - الوقت الحالي ضمن startdate و enddate
      */
     public function index(Request $request)
     {
@@ -20,8 +22,8 @@ class CompetitionController extends Controller
         }
 
         $competitions = Competition::where('status', 'active')
-            ->whereDate('startdate', '<=', now())
-            ->whereDate('enddate', '>=', now())
+            ->where('startdate', '<=', now())
+            ->where('enddate', '>=', now())
             ->get();
 
         return response()->json([
@@ -32,6 +34,7 @@ class CompetitionController extends Controller
 
     /**
      * عرض جميع المسابقات (للأدمن فقط)
+     * الأدمن يرى جميع المسابقات مهما كانت حالتها
      */
     public function adminIndex(Request $request)
     {

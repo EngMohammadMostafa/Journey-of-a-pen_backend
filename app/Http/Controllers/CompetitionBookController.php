@@ -13,54 +13,63 @@ class CompetitionBookController extends Controller
 {
     /**
      * مشاركة المستخدم في المسابقة
-     * يسمح برفع كتاب فقط إذا كانت المسابقة فعالة وحالياً ضمن تواريخها
+     * يسمح فقط إذا كانت المسابقة فعالة ووقتها شغال
      */
     public function store(Request $request, $competitionId)
     {
         $user = $request->user();
+
         if (!$user) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        // التحقق من صحة البيانات
         try {
             $request->validate([
                 'title' => 'required|string|max:50',
                 'file'  => 'required|file|mimes:pdf|max:20480',
-            ], [
-                'title.required' => 'الرجاء وضع كافة البيانات المطلوبة',
-                'file.required'  => 'الرجاء وضع كافة البيانات المطلوبة',
-                'file.mimes'     => 'الرجاء رفع ملف نوعه PDF',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
-                'message' => $e->errors() ? implode('، ', array_map(fn($v) => $v[0], $e->errors())) : 'خطأ في البيانات'
+                'message' => 'الرجاء وضع كافة البيانات المطلوبة'
             ], 422);
         }
 
-        // التحقق من المشاركة السابقة
+        // التحقق من المسابقة
+        $competition = Competition::find($competitionId);
+        if (
+            !$competition ||
+            $competition->status !== 'active' ||
+            now()->lt($competition->startdate) ||
+            now()->gt($competition->enddate)
+        ) {
+            return response()->json([
+                'message' => 'المسابقة غير متاحة حالياً'
+            ], 403);
+        }
+
+        // منع المشاركة المكررة
         $alreadyParticipated = CompetitionBook::where('competition_id', $competitionId)
             ->where('user_id', $user->id)
             ->exists();
+
         if ($alreadyParticipated) {
-            return response()->json(['message' => 'لقد قمت بالمشاركة سابقًا في هذه المسابقة'], 409);
+            return response()->json([
+                'message' => 'لقد قمت بالمشاركة سابقًا في هذه المسابقة'
+            ], 409);
         }
 
-        // التحقق من حالة المسابقة وتواريخها
-        $competition = Competition::find($competitionId);
-        if (!$competition || $competition->status !== 'active' || now()->lt($competition->startdate) || now()->gt($competition->enddate)) {
-            return response()->json(['message' => 'المسابقة غير متاحة حالياً'], 403);
+        // التحقق من الحد الأقصى
+        if (
+            CompetitionBook::where('competition_id', $competitionId)->count()
+            >= $competition->max_user
+        ) {
+            return response()->json([
+                'message' => 'اكتمل عدد المشاركين'
+            ], 403);
         }
 
-        // التحقق من الحد الأقصى للمشاركين
-        $participantsCount = CompetitionBook::where('competition_id', $competitionId)->count();
-        if ($participantsCount >= $competition->max_user) {
-            return response()->json(['message' => 'لا يمكنك المشاركة، لقد اكتمل عدد المشاركين'], 403);
-        }
-
-        // رفع الكتاب
-        $file = $request->file('file');
-        $path = $file->store('competition_books');
+        // رفع الملف
+        $path = $request->file('file')->store('competition_books');
 
         $book = CompetitionBook::create([
             'competition_id' => $competitionId,
@@ -68,25 +77,28 @@ class CompetitionBookController extends Controller
             'title'          => $request->title,
             'file_path'      => $path,
             'file_type'      => 'pdf',
-            'file_size'      => $file->getSize(),
+            'file_size'      => $request->file('file')->getSize(),
             'likes_count'    => 0,
         ]);
 
         return response()->json([
-            'message' => 'تم رفع الكتاب للمسابقة بنجاح',
+            'message' => 'تم رفع الكتاب بنجاح',
             'book' => $book
         ], 201);
     }
 
     /**
-     * عرض كتب المسابقة للمستخدم العادي
-     * يسمح بعرض الكتب فقط إذا كانت المسابقة فعالة وحالياً ضمن تواريخها
+     * عرض كتب المسابقة للمستخدم
      */
     public function index($competitionId)
     {
         $competition = Competition::findOrFail($competitionId);
 
-        if ($competition->status !== 'active' || now()->lt($competition->startdate) || now()->gt($competition->enddate)) {
+        if (
+            $competition->status !== 'active' ||
+            now()->lt($competition->startdate) ||
+            now()->gt($competition->enddate)
+        ) {
             return response()->json([
                 'message' => 'المسابقة غير متاحة حالياً'
             ], 403);
@@ -97,22 +109,28 @@ class CompetitionBookController extends Controller
             ->select('competition_book_id', 'title', 'likes_count')
             ->get();
 
-        return response()->json(['success' => true, 'books' => $books]);
+        return response()->json([
+            'success' => true,
+            'books' => $books
+        ]);
     }
 
     /**
-     * لايك / إلغاء لايك على كتاب
-     * يسمح فقط إذا كانت المسابقة فعالة
+     * لايك / إلغاء لايك
      */
     public function like(Request $request, $id)
     {
         $user = $request->user();
         $book = CompetitionBook::findOrFail($id);
-
         $competition = Competition::findOrFail($book->competition_id);
-        if ($competition->status !== 'active' || now()->lt($competition->startdate) || now()->gt($competition->enddate)) {
+
+        if (
+            $competition->status !== 'active' ||
+            now()->lt($competition->startdate) ||
+            now()->gt($competition->enddate)
+        ) {
             return response()->json([
-                'message' => 'المسابقة انتهت، لا يمكن التفاعل مع الكتاب'
+                'message' => 'المسابقة غير متاحة حالياً'
             ], 403);
         }
 
@@ -127,50 +145,20 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * حذف كتاب مستخدم من المسابقة (للأدمن فقط)
-     */
-    public function destroy(Request $request, $bookId)
-    {
-        $user = $request->user();
-        if (!isset($user->user_type) || $user->user_type != 2) {
-            return response()->json(['message' => 'غير مصرح'], 403);
-        }
-
-        $book = CompetitionBook::findOrFail($bookId);
-
-        // حذف اللايكات
-        DB::table('competition_book_user')
-            ->where('user_id', $book->user_id)
-            ->whereIn('competition_book_id', function($query) use ($book) {
-                $query->select('competition_book_id')
-                    ->from('competition_books')
-                    ->where('competition_id', $book->competition_id);
-            })
-            ->delete();
-
-        // حذف الملف الفعلي
-        Storage::delete($book->file_path);
-
-        // حذف الكتاب نفسه
-        $book->delete();
-
-        return response()->json([
-            'message' => 'تم حذف مشاركة المستخدم من المسابقة وكل اللايكات المرتبطة بها'
-        ]);
-    }
-
-    /**
      * تحميل كتاب المسابقة
-     * يسمح فقط إذا كانت المسابقة فعالة
      */
     public function download($id)
     {
         $book = CompetitionBook::findOrFail($id);
         $competition = Competition::findOrFail($book->competition_id);
 
-        if ($competition->status !== 'active' || now()->lt($competition->startdate) || now()->gt($competition->enddate)) {
+        if (
+            $competition->status !== 'active' ||
+            now()->lt($competition->startdate) ||
+            now()->gt($competition->enddate)
+        ) {
             return response()->json([
-                'message' => 'المسابقة انتهت، لا يمكن تحميل الكتاب'
+                'message' => 'المسابقة غير متاحة حالياً'
             ], 403);
         }
 
@@ -178,11 +166,14 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'الملف غير موجود'], 404);
         }
 
-        return response()->download(storage_path('app/' . $book->file_path), $book->title . '.pdf');
+        return response()->download(
+            storage_path('app/' . $book->file_path),
+            $book->title . '.pdf'
+        );
     }
 
     /**
-     * عرض الكتب مع أسماء المستخدمين الذين أعجبوا بها (للأدمن)
+     * عرض الكتب مع اللايكات (للأدمن فقط)
      */
     public function adminLikes($competitionId)
     {
@@ -197,15 +188,25 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * إضافة كتاب فائز للمنصة (للأدمن)
+     * حذف كتاب (للأدمن فقط)
      */
-    public function addToPlatform($bookId)
+    public function destroy(Request $request, $bookId)
     {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
         $book = CompetitionBook::findOrFail($bookId);
+
+        DB::table('competition_book_user')
+            ->where('competition_book_id', $book->competition_book_id)
+            ->delete();
+
+        Storage::delete($book->file_path);
+        $book->delete();
+
         return response()->json([
-            'message' => 'تم إضافة الكتاب للمنصة بنجاح',
-            'book' => $book
+            'message' => 'تم حذف الكتاب بنجاح'
         ]);
     }
 }
-
