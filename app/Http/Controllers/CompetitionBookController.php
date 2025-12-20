@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class CompetitionBookController extends Controller
 {
     /**
-     * المستخدم يرفع كتاب للمسابقة
+     * رفع كتاب للمسابقة من قبل المستخدم
      */
     public function store(Request $request, $competitionId)
     {
@@ -39,6 +39,7 @@ class CompetitionBookController extends Controller
         $file = $request->file('file');
         $path = $file->store('competition_books');
 
+        // إنشاء الكتاب وربطه بالمستخدم
         $book = CompetitionBook::create([
             'competition_id' => $competitionId,
             'user_id'        => $request->user()->id,
@@ -56,7 +57,7 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * عرض كتب المسابقة للمستخدم مع رابط التحميل
+     * عرض كتب المسابقة للمستخدم
      */
     public function index($competitionId)
     {
@@ -72,7 +73,7 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * وضع لايك أو إلغاء اللايك
+     * وضع لايك أو إلغاء اللايك على كتاب
      */
     public function like(Request $request, $competitionBookId)
     {
