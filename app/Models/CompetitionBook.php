@@ -34,7 +34,8 @@ class CompetitionBook extends Model
      */
     public function owner()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        // التغيير هنا: استخدام نموذج المستخدم الصحيح
+        return $this->belongsTo(ReadingPlatformUser::class, 'user_id');
     }
 
     /**
@@ -43,7 +44,7 @@ class CompetitionBook extends Model
     public function likedUsers()
     {
         return $this->belongsToMany(
-            User::class,
+            ReadingPlatformUser::class,  // التغيير هنا أيضاً
             'competition_book_user',
             'competition_book_id',
             'user_id'

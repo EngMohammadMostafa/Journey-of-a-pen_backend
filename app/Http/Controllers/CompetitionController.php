@@ -8,11 +8,17 @@ use Illuminate\Http\Request;
 class CompetitionController extends Controller
 {
     /**
-     * عرض المسابقات للمستخدم
-     * فقط المسابقات المتاحة (active)
+     * عرض المسابقات المتاحة للمستخدم العادي
+     * يسمح فقط بالمسابقات الفعالة وحالياً ضمن تواريخها
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->user()->user_type != 1) { // 1 = user عادي
+            return response()->json([
+                'message' => 'غير مسموح لك بعرض المسابقات كمشارك'
+            ], 403);
+        }
+
         $competitions = Competition::where('status', 'active')
             ->whereDate('startdate', '<=', now())
             ->whereDate('enddate', '>=', now())
@@ -25,23 +31,29 @@ class CompetitionController extends Controller
     }
 
     /**
-     * عرض جميع المسابقات للأدمن
+     * عرض جميع المسابقات (للأدمن فقط)
      */
-    public function adminIndex()
+    public function adminIndex(Request $request)
     {
-        $competitions = Competition::all();
+        if ($request->user()->user_type != 2) { // 2 = admin
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
 
         return response()->json([
             'success' => true,
-            'competitions' => $competitions
+            'competitions' => Competition::all()
         ]);
     }
 
     /**
-     * إنشاء مسابقة جديدة (للأدمن فقط)
+     * إنشاء مسابقة (للأدمن فقط)
      */
     public function store(Request $request)
     {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
         $request->validate([
             'name' => 'required|string|max:50',
             'status' => 'required|in:active,inactive,finished',
@@ -50,13 +62,7 @@ class CompetitionController extends Controller
             'max_user' => 'required|integer|min:1',
         ]);
 
-        $competition = Competition::create([
-            'name' => $request->name,
-            'status' => $request->status,
-            'startdate' => $request->startdate,
-            'enddate' => $request->enddate,
-            'max_user' => $request->max_user,
-        ]);
+        $competition = Competition::create($request->all());
 
         return response()->json([
             'message' => 'تم إنشاء المسابقة بنجاح',
@@ -69,6 +75,10 @@ class CompetitionController extends Controller
      */
     public function update(Request $request, $id)
     {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
         $competition = Competition::findOrFail($id);
 
         $request->validate([
@@ -90,10 +100,13 @@ class CompetitionController extends Controller
     /**
      * حذف مسابقة (للأدمن فقط)
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $competition = Competition::findOrFail($id);
-        $competition->delete();
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        Competition::findOrFail($id)->delete();
 
         return response()->json([
             'message' => 'تم حذف المسابقة بنجاح'
