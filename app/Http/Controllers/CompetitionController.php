@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Competition;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class CompetitionController extends Controller
 {
-    /**
-     * عرض المسابقات المتاحة للمستخدم العادي
-     */
     public function index(Request $request)
     {
         if ($request->user()->user_type != 1) {
@@ -27,9 +26,6 @@ class CompetitionController extends Controller
         ]);
     }
 
-    /**
-     * عرض كل المسابقات (للأدمن)
-     */
     public function adminIndex(Request $request)
     {
         if ($request->user()->user_type != 2) {
@@ -42,9 +38,6 @@ class CompetitionController extends Controller
         ]);
     }
 
-    /**
-     * إنشاء مسابقة
-     */
     public function store(Request $request)
     {
         if ($request->user()->user_type != 2) {
@@ -65,9 +58,6 @@ class CompetitionController extends Controller
         ], 201);
     }
 
-    /**
-     * تعديل مسابقة
-     */
     public function update(Request $request, $id)
     {
         if ($request->user()->user_type != 2) {
@@ -83,9 +73,6 @@ class CompetitionController extends Controller
         ]);
     }
 
-    /**
-     * حذف مسابقة
-     */
     public function destroy(Request $request, $id)
     {
         if ($request->user()->user_type != 2) {
@@ -94,9 +81,11 @@ class CompetitionController extends Controller
 
         $competition = Competition::findOrFail($id);
 
-        // حذف جميع الكتب المرتبطة قبل حذف المسابقة (لتجنب مشاكل FK)
         foreach ($competition->competitionBooks as $book) {
-            DB::table('competition_book_user')->where('competition_book_id', $book->competition_book_id)->delete();
+            DB::table('competition_book_user')
+                ->where('competition_book_id', $book->competition_book_id)
+                ->delete();
+
             Storage::delete($book->file_path);
             $book->delete();
         }

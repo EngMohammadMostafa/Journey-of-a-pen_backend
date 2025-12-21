@@ -133,7 +133,7 @@ class CompetitionBookController extends Controller
         }
 
         $book = CompetitionBook::with('likedUsers:id,username')
-                    ->findOrFail($bookId);
+            ->findOrFail($bookId);
 
         return response()->json([
             'book' => $book->title,
@@ -143,7 +143,8 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * حذف كتاب
+     * 🔴 حذف كتاب + حذف لايكات المستخدم داخل نفس المسابقة فقط
+     * 🔴 مع إعادة مزامنة likes_count
      */
     public function destroy(Request $request, $id)
     {
@@ -151,11 +152,48 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        $book = CompetitionBook::findOrFail($id);
-        DB::table('competition_book_user')->where('competition_book_id', $id)->delete();
-        Storage::delete($book->file_path);
-        $book->delete();
+        DB::beginTransaction();
 
-        return response()->json(['message' => 'تم الحذف']);
+        try {
+            $book = CompetitionBook::findOrFail($id);
+
+            $userId = $book->user_id;
+            $competitionId = $book->competition_id;
+
+            // جميع كتب نفس المسابقة
+            $competitionBookIds = CompetitionBook::where('competition_id', $competitionId)
+                ->pluck('competition_book_id');
+
+            // حذف لايكات هذا المستخدم على كتب نفس المسابقة فقط
+            DB::table('competition_book_user')
+                ->where('user_id', $userId)
+                ->whereIn('competition_book_id', $competitionBookIds)
+                ->delete();
+
+            // 🔴 إعادة مزامنة likes_count
+            CompetitionBook::whereIn('competition_book_id', $competitionBookIds)
+                ->each(function ($b) {
+                    $b->likes_count = DB::table('competition_book_user')
+                        ->where('competition_book_id', $b->competition_book_id)
+                        ->count();
+                    $b->save();
+                });
+
+            // حذف ملف الكتاب
+            Storage::delete($book->file_path);
+
+            // حذف الكتاب
+            $book->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'تم حذف المستخدم من المسابقة مع كتابه ولايكاته داخل المسابقة'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'خطأ أثناء الحذف'], 500);
+        }
     }
 }
