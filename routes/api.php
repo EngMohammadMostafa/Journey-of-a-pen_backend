@@ -142,5 +142,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // ---------- إدارة كتب المسابقة ----------
         Route::delete('/competition-books/{id}', [CompetitionBookController::class, 'destroy']); // حذف كتاب مشارك
         Route::post('/competition-books/{id}/add-to-platform', [CompetitionBookController::class, 'addToPlatform']); // إضافة كتاب فائز للمنصة
+
+        // ================== 🔹 NEW: ADMIN STATS APIs ==================
+        // 1️⃣ عدد الكتب الكلي
+        Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
+
+        // 2️⃣ عدد الأسئلة الكلي
+        Route::get('/stats/total-questions', [AdminController::class, 'totalQuestions']); 
+
+        // 3️⃣ عدد المسابقات الكلي
+        Route::get('/stats/total-competitions', [AdminController::class, 'totalCompetitions']); 
+        // التعليقات: هذه الـ APIs تعرض أرقام عامة للـ Admin لمتابعة الإحصاءات بسرعة.
     });
 });

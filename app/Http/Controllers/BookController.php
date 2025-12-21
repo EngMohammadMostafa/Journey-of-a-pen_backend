@@ -119,7 +119,7 @@ class BookController extends Controller
     }
 
     /* =====================================================
-       🔴 إضافة كتاب للمنصة (تم التعديل هنا فقط)
+       🔴 إضافة كتاب للمنصة
        ===================================================== */
     public function store(Request $request, $categoryId)
     {
@@ -128,21 +128,13 @@ class BookController extends Controller
             return response()->json(['message' => 'القسم غير موجود'], 404);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 🔴 التعديل (1): Validation
-        | - file أصبح اختياري
-        | - أضفنا competition_book_id
-        |--------------------------------------------------------------------------
-        */
+        // Validation: الملف اختياري + يمكن اختيار كتاب مسابقة
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:50',
             'author' => 'required|string|max:30',
             'description' => 'nullable|string|max:1000',
             'price' => 'nullable|numeric|min:0',
             'book_type' => 'required|in:free,paid',
-
-            // ⬅️ هنا التعديل
             'file' => 'nullable|file|mimes:pdf,epub|max:20480',
             'competition_book_id' => 'nullable|exists:competition_books,competition_book_id',
         ]);
@@ -151,24 +143,15 @@ class BookController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 🔴 التعديل (2): تحديد مصدر الملف
-        |--------------------------------------------------------------------------
-        */
-
-        // الحالة 1️⃣: الأدمن رفع ملف جديد
+        // تحديد مصدر الملف
         if ($request->hasFile('file')) {
-
+            // حالة رفع ملف جديد من الأدمن
             $file = $request->file('file');
             $path = $file->store('books');
             $fileType = $file->extension();
             $fileSize = $file->getSize();
-
-        }
-        // الحالة 2️⃣: استخدام ملف كتاب مسابقة
-        elseif ($request->competition_book_id) {
-
+        } elseif ($request->competition_book_id) {
+            // حالة استخدام كتاب من المسابقة
             $competitionBook = DB::table('competition_books')
                 ->where('competition_book_id', $request->competition_book_id)
                 ->first();
@@ -177,24 +160,16 @@ class BookController extends Controller
                 return response()->json(['message' => 'كتاب المسابقة غير موجود'], 404);
             }
 
-            // ⬅️ استيراد بيانات الملف (بدون رفع جديد)
             $path = $competitionBook->file_path;
             $fileType = $competitionBook->file_type;
             $fileSize = $competitionBook->file_size;
-
-        }
-        // لا ملف ولا كتاب مسابقة
-        else {
+        } else {
             return response()->json([
                 'message' => 'يجب رفع ملف أو اختيار كتاب من المسابقة'
             ], 422);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | إنشاء كتاب المنصة
-        |--------------------------------------------------------------------------
-        */
+        // إنشاء الكتاب في المنصة
         $book = Book::create([
             'author' => $request->author,
             'title' => $request->title,
@@ -202,12 +177,9 @@ class BookController extends Controller
             'price' => $request->price ?? 0,
             'number_of_likes' => 0,
             'book_type' => $request->book_type,
-
-            // نفس الحقول في الحالتين
             'file_path' => $path,
             'file_type' => $fileType,
             'file_size' => $fileSize,
-
             'category_id' => $categoryId
         ]);
 
@@ -298,6 +270,19 @@ class BookController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'تم حذف الكتاب'
+        ]);
+    }
+
+    /* =========================
+       🔹 API جديد: العدد الكلي للكتب للـ Admin
+       ========================= */
+    public function adminGetTotalBooks()
+    {
+        $total = Book::count();
+
+        return response()->json([
+            'success' => true,
+            'total_books' => $total
         ]);
     }
 }
