@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Competition;
 use App\Models\CompetitionBook;
+use App\Models\Book;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -143,8 +144,7 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * 🔴 حذف كتاب + حذف لايكات المستخدم داخل نفس المسابقة فقط
-     * 🔴 مع إعادة مزامنة likes_count
+     * حذف كتاب + حذف لايكات المستخدم داخل نفس المسابقة فقط
      */
     public function destroy(Request $request, $id)
     {
@@ -160,17 +160,14 @@ class CompetitionBookController extends Controller
             $userId = $book->user_id;
             $competitionId = $book->competition_id;
 
-            // جميع كتب نفس المسابقة
             $competitionBookIds = CompetitionBook::where('competition_id', $competitionId)
                 ->pluck('competition_book_id');
 
-            // حذف لايكات هذا المستخدم على كتب نفس المسابقة فقط
             DB::table('competition_book_user')
                 ->where('user_id', $userId)
                 ->whereIn('competition_book_id', $competitionBookIds)
                 ->delete();
 
-            // 🔴 إعادة مزامنة likes_count
             CompetitionBook::whereIn('competition_book_id', $competitionBookIds)
                 ->each(function ($b) {
                     $b->likes_count = DB::table('competition_book_user')
@@ -179,10 +176,7 @@ class CompetitionBookController extends Controller
                     $b->save();
                 });
 
-            // حذف ملف الكتاب
             Storage::delete($book->file_path);
-
-            // حذف الكتاب
             $book->delete();
 
             DB::commit();
@@ -195,5 +189,40 @@ class CompetitionBookController extends Controller
             DB::rollBack();
             return response()->json(['message' => 'خطأ أثناء الحذف'], 500);
         }
+    }
+
+    /**
+     * إضافة كتاب من المسابقة إلى منصة الكتب (للأدمن)
+     */
+    public function addToPlatform(Request $request, $id)
+    {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $competitionBook = CompetitionBook::with('owner')->findOrFail($id);
+
+        // نسخ الملف إلى مجلد المنصة
+        $newFilePath = 'books/' . basename($competitionBook->file_path);
+        Storage::copy($competitionBook->file_path, $newFilePath);
+
+        // إنشاء الكتاب في منصة الكتب
+        $book = Book::create([
+            'author' => $competitionBook->owner->username, // اسم صاحب الكتاب
+            'title' => $competitionBook->title,
+            'description' => $request->description ?? '',
+            'price' => $request->price ?? 0,
+            'number_of_likes' => 0,
+            'book_type' => $request->book_type ?? 'normal',
+            'file_path' => $newFilePath,
+            'file_type' => $competitionBook->file_type,
+            'file_size' => $competitionBook->file_size,
+            'category_id' => $request->category_id ?? 1, // يمكن تحديد default category
+        ]);
+
+        return response()->json([
+            'message' => 'تم إضافة الكتاب إلى المنصة بنجاح',
+            'book' => $book
+        ], 201);
     }
 }
