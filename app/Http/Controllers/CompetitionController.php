@@ -92,7 +92,16 @@ class CompetitionController extends Controller
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        Competition::findOrFail($id)->delete();
+        $competition = Competition::findOrFail($id);
+
+        // حذف جميع الكتب المرتبطة قبل حذف المسابقة (لتجنب مشاكل FK)
+        foreach ($competition->competitionBooks as $book) {
+            DB::table('competition_book_user')->where('competition_book_id', $book->competition_book_id)->delete();
+            Storage::delete($book->file_path);
+            $book->delete();
+        }
+
+        $competition->delete();
 
         return response()->json(['message' => 'تم الحذف']);
     }

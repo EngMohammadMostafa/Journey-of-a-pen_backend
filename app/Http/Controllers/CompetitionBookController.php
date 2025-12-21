@@ -32,13 +32,16 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'مشارك مسبقًا'], 409);
         }
 
-        $path = $request->file('file')->store('competition_books');
+        $uploadedFile = $request->file('file');
+        $path = $uploadedFile->store('competition_books');
 
         $book = CompetitionBook::create([
             'competition_id' => $competitionId,
             'user_id' => $user->id,
             'title' => $request->title,
             'file_path' => $path,
+            'file_type' => $uploadedFile->getClientOriginalExtension(),
+            'file_size' => $uploadedFile->getSize(),
             'likes_count' => 0
         ]);
 
@@ -110,7 +113,7 @@ class CompetitionBookController extends Controller
         $competition = Competition::findOrFail($competitionId);
 
         $books = CompetitionBook::where('competition_id', $competitionId)
-            ->with(['user:id,name', 'likedUsers:id,name'])
+            ->with(['owner:id,username', 'likedUsers:id,username'])
             ->orderByDesc('likes_count')
             ->get();
 
@@ -129,7 +132,8 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        $book = CompetitionBook::with('likedUsers:id,name')->findOrFail($bookId);
+        $book = CompetitionBook::with('likedUsers:id,username')
+                    ->findOrFail($bookId);
 
         return response()->json([
             'book' => $book->title,

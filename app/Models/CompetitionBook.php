@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\ReadingPlatformUser;
 
 class CompetitionBook extends Model
 {
@@ -34,7 +35,6 @@ class CompetitionBook extends Model
      */
     public function owner()
     {
-        // التغيير هنا: استخدام نموذج المستخدم الصحيح
         return $this->belongsTo(ReadingPlatformUser::class, 'user_id');
     }
 
@@ -44,7 +44,7 @@ class CompetitionBook extends Model
     public function likedUsers()
     {
         return $this->belongsToMany(
-            ReadingPlatformUser::class,  // التغيير هنا أيضاً
+            ReadingPlatformUser::class,
             'competition_book_user',
             'competition_book_id',
             'user_id'
