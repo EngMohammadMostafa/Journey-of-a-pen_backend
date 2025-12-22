@@ -12,6 +12,10 @@ class CompetitionBook extends Model
 
     protected $primaryKey = 'competition_book_id';
 
+    /**
+     * الحقول المسموح تعبئتها
+     * أضفنا status لدعم نظام الموافقة من الأدمن
+     */
     protected $fillable = [
         'competition_id',
         'user_id',
@@ -19,7 +23,8 @@ class CompetitionBook extends Model
         'file_path',
         'file_type',
         'file_size',
-        'likes_count'
+        'likes_count',
+        'status', // pending | accepted
     ];
 
     /**
