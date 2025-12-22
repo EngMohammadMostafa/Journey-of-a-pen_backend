@@ -14,7 +14,6 @@ class CompetitionController extends Controller
        ========================= */
     public function index(Request $request)
     {
-        // تحقق من نوع المستخدم: 1 = مستخدم عادي
         if ($request->user()->user_type != 1) {
             return response()->json(['message' => 'غير مسموح'], 403);
         }
@@ -35,7 +34,6 @@ class CompetitionController extends Controller
        ========================= */
     public function adminIndex(Request $request)
     {
-        // تحقق من نوع المستخدم: 2 = أدمن
         if ($request->user()->user_type != 2) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
@@ -101,19 +99,15 @@ class CompetitionController extends Controller
         $competition = Competition::findOrFail($id);
 
         foreach ($competition->competitionBooks as $book) {
-            // حذف أي بيانات للمستخدمين مرتبطة بكتاب المسابقة
             DB::table('competition_book_user')
                 ->where('competition_book_id', $book->competition_book_id)
                 ->delete();
 
-            // حذف الملف من التخزين
             Storage::delete($book->file_path);
 
-            // حذف الكتاب نفسه
             $book->delete();
         }
 
-        // حذف المسابقة نفسها
         $competition->delete();
 
         return response()->json(['message' => 'تم الحذف']);
