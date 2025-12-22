@@ -13,6 +13,8 @@ class CompetitionBookController extends Controller
 {
     /**
      * رفع كتاب للمسابقة
+     * - الكتاب الجديد يبدأ دائمًا بحالة 'pending'
+     * - لا يمكن رفع كتاب إذا المستخدم رفع مسبقًا
      */
     public function store(Request $request, $competitionId)
     {
@@ -43,7 +45,8 @@ class CompetitionBookController extends Controller
             'file_path' => $path,
             'file_type' => $uploadedFile->getClientOriginalExtension(),
             'file_size' => $uploadedFile->getSize(),
-            'likes_count' => 0
+            'likes_count' => 0,
+            'status' => 'pending', // ⭐ الجديد: الكتاب يبدأ بوضعية "بانتظار موافقة الأدمن"
         ]);
 
         return response()->json(['book' => $book], 201);
@@ -51,6 +54,7 @@ class CompetitionBookController extends Controller
 
     /**
      * عرض كتب المسابقة للمستخدم
+     * - يظهر فقط الكتب التي تم قبولها (status = accepted)
      */
     public function index($competitionId)
     {
@@ -62,6 +66,7 @@ class CompetitionBookController extends Controller
 
         return response()->json([
             'books' => CompetitionBook::where('competition_id', $competitionId)
+                ->where('status', 'accepted') // ⭐ فقط الكتب المقبولة تظهر للمستخدم
                 ->orderByDesc('likes_count')
                 ->get(['competition_book_id', 'title', 'likes_count'])
         ]);
@@ -69,14 +74,14 @@ class CompetitionBookController extends Controller
 
     /**
      * لايك / إلغاء لايك
+     * - يمكن فقط على الكتب المقبولة
      */
     public function like(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
-        $competition = Competition::findOrFail($book->competition_id);
 
-        if ($competition->status !== 'active') {
-            return response()->json(['message' => 'غير متاحة'], 403);
+        if ($book->status !== 'accepted') {
+            return response()->json(['message' => 'غير مسموح باللايك على هذا الكتاب'], 403);
         }
 
         $result = $book->likedUsers()->toggle($request->user()->id);
@@ -91,10 +96,15 @@ class CompetitionBookController extends Controller
 
     /**
      * تحميل كتاب
+     * - يمكن فقط تحميل الكتب المقبولة
      */
     public function download($id)
     {
         $book = CompetitionBook::findOrFail($id);
+
+        if ($book->status !== 'accepted') {
+            return response()->json(['message' => 'الكتاب غير متاح للتحميل'], 403);
+        }
 
         return response()->download(
             storage_path('app/' . $book->file_path),
@@ -104,6 +114,7 @@ class CompetitionBookController extends Controller
 
     /**
      * ⭐ عرض تفاصيل مسابقة كاملة (للأدمن)
+     * - يشمل كل الكتب (pending + accepted)
      */
     public function adminCompetitionDetails(Request $request, $competitionId)
     {
@@ -138,6 +149,7 @@ class CompetitionBookController extends Controller
 
         return response()->json([
             'book' => $book->title,
+            'status' => $book->status, // ⭐ إضافة الحالة للعرض
             'likes_count' => $book->likes_count,
             'liked_users' => $book->likedUsers
         ]);
@@ -224,5 +236,28 @@ class CompetitionBookController extends Controller
             'message' => 'تم إضافة الكتاب إلى المنصة بنجاح',
             'book' => $book
         ], 201);
+    }
+
+    /**
+     * ⭐ جديد: قبول / رفض كتاب من قبل الأدمن
+     */
+    public function approveOrReject(Request $request, $bookId)
+    {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $request->validate([
+            'status' => 'required|in:accepted,rejected'
+        ]);
+
+        $book = CompetitionBook::findOrFail($bookId);
+        $book->status = $request->status;
+        $book->save();
+
+        return response()->json([
+            'message' => 'تم تحديث حالة الكتاب بنجاح',
+            'book' => $book
+        ]);
     }
 }
