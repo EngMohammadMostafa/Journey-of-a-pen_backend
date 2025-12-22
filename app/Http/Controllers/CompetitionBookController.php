@@ -46,10 +46,11 @@ class CompetitionBookController extends Controller
             'file_type' => $uploadedFile->getClientOriginalExtension(),
             'file_size' => $uploadedFile->getSize(),
             'likes_count' => 0,
-            'status' => 'pending', // ⭐ الجديد: الكتاب يبدأ بوضعية "بانتظار موافقة الأدمن"
+            'status' => 'pending', // ⭐ جديد: كل كتاب مرفوع يبدأ "بانتظار موافقة الأدمن"
         ]);
 
-        return response()->json(['book' => $book], 201);
+        // ⭐ رسالة واضحة للمستخدم أن الكتاب أرسل للمراجعة
+        return response()->json(['message' => 'تم إرسال الكتاب للمراجعة في انتظار موافقة الأدمن', 'book' => $book], 201);
     }
 
     /**
@@ -96,20 +97,25 @@ class CompetitionBookController extends Controller
 
     /**
      * تحميل كتاب
-     * - يمكن فقط تحميل الكتب المقبولة
+     * - يمكن فقط تحميل الكتب المقبولة للمستخدمين
+     * - يمكن تحميل الكتب المعلقة فقط للأدمن
      */
-    public function download($id)
+    public function download(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
 
-        if ($book->status !== 'accepted') {
+        if ($book->status === 'pending' && $request->user()->user_type != 2) {
             return response()->json(['message' => 'الكتاب غير متاح للتحميل'], 403);
         }
 
-        return response()->download(
-            storage_path('app/' . $book->file_path),
-            $book->title . '.pdf'
-        );
+        if ($book->status === 'accepted' && $request->user()->user_type == 1) {
+            $competition = Competition::findOrFail($book->competition_id);
+            if ($competition->status !== 'active' || now()->lt($competition->startdate) || now()->gt($competition->enddate)) {
+                return response()->json(['message' => 'المسابقة غير متاحة'], 403);
+            }
+        }
+
+        return response()->download(storage_path('app/' . $book->file_path), $book->title . '.pdf');
     }
 
     /**
@@ -144,8 +150,7 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        $book = CompetitionBook::with('likedUsers:id,username')
-            ->findOrFail($bookId);
+        $book = CompetitionBook::with('likedUsers:id,username')->findOrFail($bookId);
 
         return response()->json([
             'book' => $book->title,
@@ -193,9 +198,7 @@ class CompetitionBookController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'تم حذف المستخدم من المسابقة مع كتابه ولايكاته داخل المسابقة'
-            ]);
+            return response()->json(['message' => 'تم حذف المستخدم من المسابقة مع كتابه ولايكاته داخل المسابقة']);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -214,13 +217,11 @@ class CompetitionBookController extends Controller
 
         $competitionBook = CompetitionBook::with('owner')->findOrFail($id);
 
-        // نسخ الملف إلى مجلد المنصة
         $newFilePath = 'books/' . basename($competitionBook->file_path);
         Storage::copy($competitionBook->file_path, $newFilePath);
 
-        // إنشاء الكتاب في منصة الكتب
         $book = Book::create([
-            'author' => $competitionBook->owner->username, // اسم صاحب الكتاب
+            'author' => $competitionBook->owner->username,
             'title' => $competitionBook->title,
             'description' => $request->description ?? '',
             'price' => $request->price ?? 0,
@@ -229,13 +230,10 @@ class CompetitionBookController extends Controller
             'file_path' => $newFilePath,
             'file_type' => $competitionBook->file_type,
             'file_size' => $competitionBook->file_size,
-            'category_id' => $request->category_id ?? 1, // يمكن تحديد default category
+            'category_id' => $request->category_id ?? 1,
         ]);
 
-        return response()->json([
-            'message' => 'تم إضافة الكتاب إلى المنصة بنجاح',
-            'book' => $book
-        ], 201);
+        return response()->json(['message' => 'تم إضافة الكتاب إلى المنصة بنجاح', 'book' => $book], 201);
     }
 
     /**
@@ -252,12 +250,17 @@ class CompetitionBookController extends Controller
         ]);
 
         $book = CompetitionBook::findOrFail($bookId);
-        $book->status = $request->status;
+
+        if ($request->status === 'rejected') {
+            Storage::delete($book->file_path);
+            $book->delete();
+            return response()->json(['message' => 'تم رفض الكتاب وحذفه بنجاح']);
+        }
+
+        // قبول الكتاب
+        $book->status = 'accepted';
         $book->save();
 
-        return response()->json([
-            'message' => 'تم تحديث حالة الكتاب بنجاح',
-            'book' => $book
-        ]);
+        return response()->json(['message' => 'تم قبول الكتاب بنجاح', 'book' => $book]);
     }
 }

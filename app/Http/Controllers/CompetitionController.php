@@ -23,10 +23,7 @@ class CompetitionController extends Controller
             ->where('enddate', '>=', now())
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'competitions' => $competitions
-        ]);
+        return response()->json(['success' => true, 'competitions' => $competitions]);
     }
 
     /* =========================
@@ -38,10 +35,7 @@ class CompetitionController extends Controller
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'competitions' => Competition::all()
-        ]);
+        return response()->json(['success' => true, 'competitions' => Competition::all()]);
     }
 
     /* =========================
@@ -63,10 +57,7 @@ class CompetitionController extends Controller
 
         $competition = Competition::create($request->all());
 
-        return response()->json([
-            'message' => 'تم إنشاء المسابقة',
-            'competition' => $competition
-        ], 201);
+        return response()->json(['message' => 'تم إنشاء المسابقة', 'competition' => $competition], 201);
     }
 
     /* =========================
@@ -81,10 +72,7 @@ class CompetitionController extends Controller
         $competition = Competition::findOrFail($id);
         $competition->update($request->all());
 
-        return response()->json([
-            'message' => 'تم التعديل',
-            'competition' => $competition
-        ]);
+        return response()->json(['message' => 'تم التعديل', 'competition' => $competition]);
     }
 
     /* =========================
@@ -124,9 +112,6 @@ class CompetitionController extends Controller
 
         $total = Competition::count();
 
-        return response()->json([
-            'success' => true,
-            'total_competitions' => $total
-        ]);
+        return response()->json(['success' => true, 'total_competitions' => $total]);
     }
 }
