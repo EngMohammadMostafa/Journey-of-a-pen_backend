@@ -21,8 +21,8 @@ use App\Http\Controllers\CompetitionBookController;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| Here is where you can register API routes for your application.
-|
+| هذا الملف يحتوي على جميع الـ API Routes للنظام
+| تم إضافة تعليقات لتوضيح كل جزء.
 */
 
 Route::get('/', function () {
@@ -75,10 +75,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ---------- COMPETITIONS (USER) ----------
     Route::get('/competitions', [CompetitionController::class, 'index']); // جميع المسابقات المتاحة
-    Route::get('/competitions/{id}/books', [CompetitionBookController::class, 'index']); // عرض كتب المسابقة (بدون أسماء)
-    Route::post('/competitions/{id}/participate', [CompetitionBookController::class, 'store']); // رفع كتاب للمسابقة
-    Route::post('/competition-books/{id}/like', [CompetitionBookController::class, 'like']); // لايك / إلغاء لايك
-    Route::get('/competition-books/{id}/download', [CompetitionBookController::class, 'download']); // تحميل الكتاب
+    Route::get('/competitions/{id}/books', [CompetitionBookController::class, 'index']); 
+    // عرض كتب المسابقة للمستخدمين العاديين → فقط الكتب المقبولة (status = accepted)
+    Route::post('/competitions/{id}/participate', [CompetitionBookController::class, 'store']); 
+    // رفع كتاب للمسابقة → default status = pending
+    Route::post('/competition-books/{id}/like', [CompetitionBookController::class, 'like']); 
+    Route::get('/competition-books/{id}/download', [CompetitionBookController::class, 'download']); 
+    // تحميل كتاب → المستخدم يستطيع تحميله فقط إذا كان accepted
 
     // ================== ADMIN ==================
     Route::prefix('admin')->middleware('admin')->group(function () {
@@ -131,6 +134,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/competitions/{id}', [CompetitionController::class, 'destroy']); // حذف مسابقة
 
         // ⭐ جديد: عرض تفاصيل مسابقة كاملة مع الكتب وأسماء المشاركين
+        // هنا يظهر كل الكتب حتى pending، بحيث الأدمن يقدر يقرر قبول أو رفض
         Route::get('/competitions/{id}/details', [CompetitionBookController::class, 'adminCompetitionDetails']); 
 
         // ⭐ جديد: عرض لايكات كتاب معين (مع أسماء المستخدمين)
@@ -144,14 +148,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/competition-books/{id}/add-to-platform', [CompetitionBookController::class, 'addToPlatform']); // إضافة كتاب فائز للمنصة
 
         // ================== 🔹 NEW: ADMIN STATS APIs ==================
-        // 1️⃣ عدد الكتب الكلي
         Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
-
-        // 2️⃣ عدد الأسئلة الكلي
         Route::get('/stats/total-questions', [AdminController::class, 'totalQuestions']); 
-
-        // 3️⃣ عدد المسابقات الكلي
         Route::get('/stats/total-competitions', [AdminController::class, 'totalCompetitions']); 
-        // التعليقات: هذه الـ APIs تعرض أرقام عامة للـ Admin لمتابعة الإحصاءات بسرعة.
+        // هذه الـ APIs تعرض أرقام عامة للـ Admin لمتابعة الإحصاءات بسرعة.
     });
 });
