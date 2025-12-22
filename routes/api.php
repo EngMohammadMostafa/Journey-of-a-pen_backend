@@ -134,10 +134,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/competitions/{id}', [CompetitionController::class, 'destroy']); // حذف مسابقة
 
         // ⭐ جديد: عرض تفاصيل مسابقة كاملة مع الكتب وأسماء المشاركين
-        // هنا يظهر كل الكتب حتى pending، بحيث الأدمن يقدر يقرر قبول أو رفض
+        // يظهر كل الكتب حتى pending → الأدمن يستطيع قبول أو رفض
         Route::get('/competitions/{id}/details', [CompetitionBookController::class, 'adminCompetitionDetails']); 
 
-        // ⭐ جديد: عرض لايكات كتاب معين (مع أسماء المستخدمين)
+        // ⭐ جديد: عرض لايكات كتاب معين (مع أسماء المستخدمين + الحالة)
         Route::get('/competition-books/{id}/likes', [CompetitionBookController::class, 'adminBookLikes']); 
 
         // عرض كتب المسابقة مع أسماء المشاركين (قديمة لكن تبقى موجودة)
@@ -146,6 +146,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // ---------- إدارة كتب المسابقة ----------
         Route::delete('/competition-books/{id}', [CompetitionBookController::class, 'destroy']); // حذف كتاب مشارك
         Route::post('/competition-books/{id}/add-to-platform', [CompetitionBookController::class, 'addToPlatform']); // إضافة كتاب فائز للمنصة
+        Route::post('/competition-books/{id}/approve-or-reject', [CompetitionBookController::class, 'approveOrReject']); // قبول / رفض كتاب من قبل الأدمن
 
         // ================== 🔹 NEW: ADMIN STATS APIs ==================
         Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
