@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Competition;
 use App\Models\CompetitionBook;
+use App\Models\Book;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -107,29 +108,25 @@ class CompetitionBookController extends Controller
 
     /**
      * لايك / إلغاء لايك على كتاب
-     * ✅ التحقق من حالة الكتاب + حالة المسابقة + التواريخ
      */
     public function like(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
 
-        // تحقق من حالة الكتاب
         if ($book->status !== 'accepted') {
             return response()->json(['message' => 'لا يمكن الإعجاب بهذا الكتاب'], 403);
         }
 
-        // تحقق من حالة المسابقة المرتبطة بالكتاب
-        $competition = $book->competition; // العلاقة belongsTo يجب أن تكون معرفة في نموذج CompetitionBook
+        $competition = $book->competition;
         if (
             !$competition ||
-            $competition->status !== 'active' ||       // المسابقة يجب أن تكون active
-            now()->lt($competition->startdate) ||     // التاريخ قبل بداية المسابقة
-            now()->gt($competition->enddate)          // التاريخ بعد نهاية المسابقة
+            $competition->status !== 'active' ||
+            now()->lt($competition->startdate) ||
+            now()->gt($competition->enddate)
         ) {
             return response()->json(['message' => 'المسابقة غير متاحة حالياً'], 403);
         }
 
-        // عمل اللايك أو إلغاءه
         $result = $book->likedUsers()->toggle($request->user()->id);
         $book->likes_count = $book->likedUsers()->count();
         $book->save();
@@ -201,13 +198,11 @@ class CompetitionBookController extends Controller
         $book = CompetitionBook::findOrFail($bookId);
 
         if ($request->status === 'rejected') {
-            // حذف الملف وحذف السجل
             Storage::delete($book->file_path);
             $book->delete();
             return response()->json(['message' => 'تم رفض الكتاب وحذفه']);
         }
 
-        // قبول الكتاب
         $book->status = 'accepted';
         $book->save();
 
@@ -218,7 +213,7 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * ⭐ جديد: عرض عدد اللايكات ومعلومات المستخدمين الذين أعجبوا بالكتاب للأدمن
+     * عرض عدد اللايكات ومعلومات المستخدمين الذين أعجبوا بالكتاب للأدمن
      */
     public function adminBookLikes(Request $request, $bookId)
     {
@@ -234,5 +229,85 @@ class CompetitionBookController extends Controller
             'likes_count' => $book->likes_count,
             'liked_users' => $book->likedUsers
         ]);
+    }
+
+    /**
+     * حذف كتاب مشارك من المسابقة مع حذف اللايكات المرتبطة به فقط
+     */
+    public function destroy(Request $request, $bookId)
+    {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $book = CompetitionBook::with('likedUsers')->findOrFail($bookId);
+
+        // حذف جميع اللايكات لهذا الكتاب فقط
+        $book->likedUsers()->detach();
+
+        // حذف الملف
+        Storage::delete($book->file_path);
+
+        // حذف السجل من قاعدة البيانات
+        $book->delete();
+
+        // إعادة ترتيب الكتب المتبقية حسب likes_count تنازليًا
+        $competitionId = $book->competition_id;
+        $books = CompetitionBook::where('competition_id', $competitionId)
+                    ->orderByDesc('likes_count')
+                    ->get();
+
+        return response()->json([
+            'message' => 'تم حذف الكتاب بنجاح، وتم إعادة ترتيب الكتب حسب التفاعل',
+            'remaining_books' => $books
+        ]);
+    }
+
+    /**
+     * ⭐ جديد: إضافة كتاب مقبول من المسابقة إلى كتب المنصة
+     * فقط للأدمن
+     */
+    public function addToPlatform(Request $request, $bookId)
+    {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'category_id' => 'required|exists:categories,id',
+            'price'       => 'nullable|numeric|min:0',
+            'book_type'   => 'required|in:free,paid',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // جلب الكتاب من المسابقة
+        $competitionBook = CompetitionBook::findOrFail($bookId);
+
+        if ($competitionBook->status !== 'accepted') {
+            return response()->json(['message' => 'لا يمكن إضافة كتاب غير مقبول للمنصة'], 403);
+        }
+
+        // إنشاء الكتاب في المنصة باستخدام بيانات المسابقة + بيانات الأدمن
+        $book = Book::create([
+            'title'       => $competitionBook->title,
+            'author'      => $competitionBook->owner->username ?? 'غير معروف',
+            'description' => $request->description ?? '',
+            'price'       => $request->price ?? 0,
+            'book_type'   => $request->book_type,
+            'file_path'   => $competitionBook->file_path,
+            'file_type'   => $competitionBook->file_type,
+            'file_size'   => $competitionBook->file_size,
+            'category_id' => $request->category_id,
+            'number_of_likes' => 0,
+        ]);
+
+        return response()->json([
+            'message' => 'تم إضافة الكتاب للمنصة بنجاح',
+            'book' => $book
+        ], 201);
     }
 }
