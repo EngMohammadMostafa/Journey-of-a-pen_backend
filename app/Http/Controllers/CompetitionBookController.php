@@ -17,12 +17,12 @@ class CompetitionBookController extends Controller
     {
         $user = $request->user();
 
-        // ✅ فقط المستخدم العادي
+        // ✅ فقط المستخدم العادي يمكنه رفع كتاب
         if ($user->user_type != 1) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        // ✅ VALIDATION
+        // ✅ VALIDATION للعنوان والملف
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'file'  => 'required|file|mimes:pdf|max:10240',
@@ -52,7 +52,7 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'المسابقة غير متاحة'], 403);
         }
 
-        // تحقق من العدد الأقصى
+        // تحقق من العدد الأقصى للمشاركين
         $currentCount = CompetitionBook::where('competition_id', $competitionId)->count();
         if ($currentCount >= $competition->max_user) {
             return response()->json(['message' => 'عدد المشاركين مكتمل'], 403);
@@ -65,7 +65,7 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'لقد شاركت مسبقًا في هذه المسابقة'], 409);
         }
 
-        // رفع الملف
+        // رفع الملف وتخزينه
         $uploadedFile = $request->file('file');
         $path = $uploadedFile->store('competition_books');
 
@@ -77,10 +77,9 @@ class CompetitionBookController extends Controller
             'file_type'      => 'pdf',
             'file_size'      => $uploadedFile->getSize(),
             'likes_count'    => 0,
-            'status'         => 'pending',
+            'status'         => 'pending', // تلقائيًا ينتظر مراجعة الإدارة
         ]);
 
-        // ✅ لا نرجّع book
         return response()->json([
             'success' => true,
             'message' => 'تم إرسال الكتاب للمراجعة بانتظار موافقة الإدارة'
@@ -107,16 +106,30 @@ class CompetitionBookController extends Controller
     }
 
     /**
-     * لايك / إلغاء لايك
+     * لايك / إلغاء لايك على كتاب
+     * ✅ التعديل: التحقق من حالة الكتاب + حالة المسابقة + التواريخ
      */
     public function like(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
 
+        // 1️⃣ تحقق من حالة الكتاب
         if ($book->status !== 'accepted') {
             return response()->json(['message' => 'لا يمكن الإعجاب بهذا الكتاب'], 403);
         }
 
+        // 2️⃣ تحقق من حالة المسابقة المرتبطة بالكتاب
+        $competition = $book->competition; // يجب أن تكون العلاقة belongsTo معرفة في نموذج CompetitionBook
+        if (
+            !$competition ||
+            $competition->status !== 'active' ||       // المسابقة يجب أن تكون active
+            now()->lt($competition->startdate) ||     // التاريخ قبل بداية المسابقة
+            now()->gt($competition->enddate)          // التاريخ بعد نهاية المسابقة
+        ) {
+            return response()->json(['message' => 'المسابقة غير متاحة حالياً'], 403);
+        }
+
+        // 3️⃣ عمل اللايك أو إلغاءه
         $result = $book->likedUsers()->toggle($request->user()->id);
         $book->likes_count = $book->likedUsers()->count();
         $book->save();
@@ -188,11 +201,13 @@ class CompetitionBookController extends Controller
         $book = CompetitionBook::findOrFail($bookId);
 
         if ($request->status === 'rejected') {
+            // حذف الملف وحذف السجل
             Storage::delete($book->file_path);
             $book->delete();
             return response()->json(['message' => 'تم رفض الكتاب وحذفه']);
         }
 
+        // قبول الكتاب
         $book->status = 'accepted';
         $book->save();
 
