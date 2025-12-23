@@ -12,17 +12,17 @@ class CompetitionBookController extends Controller
 {
     /**
      * رفع كتاب للمسابقة
+     * ✅ فقط للمستخدم العادي
      */
     public function store(Request $request, $competitionId)
     {
         $user = $request->user();
 
-        // ✅ فقط المستخدم العادي يمكنه رفع كتاب
         if ($user->user_type != 1) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        // ✅ VALIDATION للعنوان والملف
+        // تحقق من صحة البيانات
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'file'  => 'required|file|mimes:pdf|max:10240',
@@ -107,19 +107,19 @@ class CompetitionBookController extends Controller
 
     /**
      * لايك / إلغاء لايك على كتاب
-     * ✅ التعديل: التحقق من حالة الكتاب + حالة المسابقة + التواريخ
+     * ✅ التحقق من حالة الكتاب + حالة المسابقة + التواريخ
      */
     public function like(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
 
-        // 1️⃣ تحقق من حالة الكتاب
+        // تحقق من حالة الكتاب
         if ($book->status !== 'accepted') {
             return response()->json(['message' => 'لا يمكن الإعجاب بهذا الكتاب'], 403);
         }
 
-        // 2️⃣ تحقق من حالة المسابقة المرتبطة بالكتاب
-        $competition = $book->competition; // يجب أن تكون العلاقة belongsTo معرفة في نموذج CompetitionBook
+        // تحقق من حالة المسابقة المرتبطة بالكتاب
+        $competition = $book->competition; // العلاقة belongsTo يجب أن تكون معرفة في نموذج CompetitionBook
         if (
             !$competition ||
             $competition->status !== 'active' ||       // المسابقة يجب أن تكون active
@@ -129,7 +129,7 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'المسابقة غير متاحة حالياً'], 403);
         }
 
-        // 3️⃣ عمل اللايك أو إلغاءه
+        // عمل اللايك أو إلغاءه
         $result = $book->likedUsers()->toggle($request->user()->id);
         $book->likes_count = $book->likedUsers()->count();
         $book->save();
@@ -214,6 +214,25 @@ class CompetitionBookController extends Controller
         return response()->json([
             'message' => 'تم قبول الكتاب',
             'book'    => $book
+        ]);
+    }
+
+    /**
+     * ⭐ جديد: عرض عدد اللايكات ومعلومات المستخدمين الذين أعجبوا بالكتاب للأدمن
+     */
+    public function adminBookLikes(Request $request, $bookId)
+    {
+        if ($request->user()->user_type != 2) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $book = CompetitionBook::with('likedUsers:id,username')->findOrFail($bookId);
+
+        return response()->json([
+            'book_id'     => $book->competition_book_id,
+            'title'       => $book->title,
+            'likes_count' => $book->likes_count,
+            'liked_users' => $book->likedUsers
         ]);
     }
 }
