@@ -9,9 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class CompetitionController extends Controller
 {
-    /* =========================
-       قائمة المسابقات للمستخدم العادي
-       ========================= */
     public function index(Request $request)
     {
         if ($request->user()->user_type != 1) {
@@ -26,9 +23,6 @@ class CompetitionController extends Controller
         return response()->json(['success' => true, 'competitions' => $competitions]);
     }
 
-    /* =========================
-       قائمة المسابقات للـ Admin
-       ========================= */
     public function adminIndex(Request $request)
     {
         if ($request->user()->user_type != 2) {
@@ -38,9 +32,6 @@ class CompetitionController extends Controller
         return response()->json(['success' => true, 'competitions' => Competition::all()]);
     }
 
-    /* =========================
-       إنشاء مسابقة جديدة
-       ========================= */
     public function store(Request $request)
     {
         if ($request->user()->user_type != 2) {
@@ -60,9 +51,6 @@ class CompetitionController extends Controller
         return response()->json(['message' => 'تم إنشاء المسابقة', 'competition' => $competition], 201);
     }
 
-    /* =========================
-       تعديل مسابقة
-       ========================= */
     public function update(Request $request, $id)
     {
         if ($request->user()->user_type != 2) {
@@ -75,9 +63,6 @@ class CompetitionController extends Controller
         return response()->json(['message' => 'تم التعديل', 'competition' => $competition]);
     }
 
-    /* =========================
-       حذف مسابقة وكتبها
-       ========================= */
     public function destroy(Request $request, $id)
     {
         if ($request->user()->user_type != 2) {
@@ -92,7 +77,6 @@ class CompetitionController extends Controller
                 ->delete();
 
             Storage::delete($book->file_path);
-
             $book->delete();
         }
 
@@ -101,17 +85,15 @@ class CompetitionController extends Controller
         return response()->json(['message' => 'تم الحذف']);
     }
 
-    /* =========================
-       🔹 API جديد: العدد الكلي للمسابقات للـ Admin
-       ========================= */
     public function adminGetTotalCompetitions(Request $request)
     {
         if ($request->user()->user_type != 2) {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        $total = Competition::count();
-
-        return response()->json(['success' => true, 'total_competitions' => $total]);
+        return response()->json([
+            'success' => true,
+            'total_competitions' => Competition::count()
+        ]);
     }
 }
