@@ -11,6 +11,9 @@ class RequestBook extends Model
 
     protected $table = 'request_books';
 
+    // تحديد العمود الأساسي الصحيح
+    protected $primaryKey = 'request_id';
+
     protected $fillable = [
         'user_id',
         'title',

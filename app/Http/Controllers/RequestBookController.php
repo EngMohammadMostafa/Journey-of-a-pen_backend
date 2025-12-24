@@ -8,15 +8,18 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class RequestBookController extends Controller
 {
     /**
-     * عرض نموذج تقديم طلب الكتاب للمستخدم
+     * عرض نموذج تقديم طلب الكتاب للمستخدم (ليس ضروري في API)
      */
     public function create()
     {
-        return view('request_books.create');
+        return response()->json([
+            'message' => 'هذه النقطة مخصصة للـ Web وليس API'
+        ]);
     }
 
     /**
@@ -25,7 +28,7 @@ class RequestBookController extends Controller
     public function store(Request $request)
     {
         // التحقق من البيانات + رسائل عربية
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:50',
             'description' => 'required|string|max:255',
             'book_type' => 'required|in:free,paid',
@@ -39,12 +42,28 @@ class RequestBookController extends Controller
             'file.mimes' => 'الرجاء إرفاق ملف بصيغة PDF فقط',
         ]);
 
+        // تحقق إضافي: إذا الكتاب مدفوع يجب ملء السعر
+        if ($request->book_type === 'paid' && is_null($request->price)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'الرجاء إدخال سعر الكتاب لأنه مدفوع'
+            ], 422);
+        }
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'فشل التحقق من البيانات',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         // حفظ الملف مؤقتاً
         $file = $request->file('file');
         $file_path = $file->store('request_books', 'public');
 
         // إنشاء طلب الكتاب
-        RequestBook::create([
+        $requestBook = RequestBook::create([
             'user_id' => Auth::id(),
             'title' => $request->title,
             'description' => $request->description,
@@ -56,7 +75,11 @@ class RequestBookController extends Controller
             'status' => 'pending', // الحالة الافتراضية
         ]);
 
-        return redirect()->back()->with('success', 'تم إرسال طلب إضافة الكتاب بنجاح، بانتظار مراجعة الإدارة.');
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم إرسال طلب إضافة الكتاب بنجاح، بانتظار مراجعة الإدارة.',
+            'request_book' => $requestBook
+        ], 201);
     }
 
     /**
@@ -64,11 +87,14 @@ class RequestBookController extends Controller
      */
     public function index()
     {
-        // عرض جميع الطلبات (pending / accepted / rejected)
         $requests = RequestBook::orderBy('created_at', 'desc')->get();
         $categories = Category::all();
 
-        return view('request_books.index', compact('requests', 'categories'));
+        return response()->json([
+            'status' => 'success',
+            'requests' => $requests,
+            'categories' => $categories
+        ]);
     }
 
     /**
@@ -78,16 +104,17 @@ class RequestBookController extends Controller
     {
         $requestBook = RequestBook::findOrFail($id);
 
-        // التحقق من اختيار القسم
         if (!$request->category_id) {
-            return redirect()->back()->with('error', 'الرجاء اختيار قسم للكتاب.');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'الرجاء اختيار قسم للكتاب.'
+            ], 422);
         }
 
-        // إنشاء الكتاب في جدول Book
-        Book::create([
+        $book = Book::create([
             'category_id' => $request->category_id,
             'price' => $requestBook->price,
-            'author' => $requestBook->user->username, // اسم المستخدم هو المؤلف
+            'author' => $requestBook->user->username,
             'title' => $requestBook->title,
             'description' => $requestBook->description,
             'book_type' => $requestBook->book_type,
@@ -96,18 +123,19 @@ class RequestBookController extends Controller
             'file_size' => $requestBook->file_size,
         ]);
 
-        // تحديث حالة الطلب فقط (بدون حذف)
         $requestBook->update([
             'status' => 'accepted',
         ]);
 
-        return redirect()->back()->with('success', 'تمت الموافقة على الطلب وإضافة الكتاب إلى المنصة.');
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تمت الموافقة على الطلب وإضافة الكتاب إلى المنصة.',
+            'book' => $book
+        ]);
     }
 
     /**
      * رفض الطلب من قبل الأدمن
-     * ❗ لا نحذف الطلب من قاعدة البيانات
-     * ❗ فقط نغيّر الحالة إلى rejected
      */
     public function reject($id)
     {
@@ -118,11 +146,13 @@ class RequestBookController extends Controller
             Storage::disk('public')->delete($requestBook->file_path);
         }
 
-        // تحديث حالة الطلب إلى rejected (بدون حذف السجل)
         $requestBook->update([
             'status' => 'rejected',
         ]);
 
-        return redirect()->back()->with('success', 'تم رفض الطلب.');
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم رفض الطلب.'
+        ]);
     }
 }
