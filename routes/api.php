@@ -16,14 +16,14 @@ use App\Http\Controllers\RepointController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompetitionController;
 use App\Http\Controllers\CompetitionBookController;
-use App\Http\Controllers\NotificationController; // ✅ إضافة NotificationController
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\RequestBookController; // ✅ إضافة Controller طلبات الكتب
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| هذا الملف يحتوي على جميع الـ API Routes للنظام
-| تم إضافة تعليقات لتوضيح كل جزء.
+| جميع مسارات الـ API الخاصة بالمنصة
 */
 
 Route::get('/', function () {
@@ -40,7 +40,7 @@ Route::prefix('auth')->group(function () {
 Route::get('/categories', [CategoryController::class, 'index']);      
 Route::get('/categories/{id}', [CategoryController::class, 'show']); 
 
-// ================== PROTECTED ==================
+// ================== PROTECTED (AUTH USER) ==================
 Route::middleware(['auth:sanctum'])->group(function () {
 
     // ---------- USER PROFILE ----------
@@ -75,14 +75,26 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); 
 
     // ---------- COMPETITIONS (USER) ----------
-    Route::get('/competitions', [CompetitionController::class, 'index']); // جميع المسابقات المتاحة
+    Route::get('/competitions', [CompetitionController::class, 'index']);
     Route::get('/competitions/{id}/books', [CompetitionBookController::class, 'index']); 
     Route::post('/competitions/{id}/participate', [CompetitionBookController::class, 'store']); 
     Route::post('/competition-books/{id}/like', [CompetitionBookController::class, 'like']); 
     Route::get('/competition-books/{id}/download', [CompetitionBookController::class, 'download']); 
 
     // ---------- NOTIFICATIONS (USER) ----------
-    Route::get('/notifications', [NotificationController::class, 'index']); // عرض جميع الإشعارات للمستخدمين
+    Route::get('/notifications', [NotificationController::class, 'index']);
+
+    // ================== 📚 REQUEST BOOKS (USER) ==================
+
+    // إرسال طلب رفع كتاب للمنصة
+    Route::post('/request-books', [RequestBookController::class, 'store']);
+
+    // عرض جميع الطلبات التي قدمها المستخدم + حالتها (pending / accepted / rejected)
+    Route::get('/request-books/my-requests', function (Request $request) {
+        return \App\Models\RequestBook::where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    });
 });
 
 // ================== ADMIN ==================
@@ -142,10 +154,21 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/competition-books/{id}/approve-or-reject', [CompetitionBookController::class, 'approveOrReject']); 
 
     // ---------- NOTIFICATIONS (ADMIN) ----------
-    Route::post('/notifications', [NotificationController::class, 'store']); // إضافة إشعار جديد
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); // حذف إشعار
+    Route::post('/notifications', [NotificationController::class, 'store']); 
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); 
 
-    // ================== 🔹 NEW: ADMIN STATS APIs ==================
+    // ================== 📚 REQUEST BOOKS (ADMIN) ==================
+
+    // عرض جميع طلبات رفع الكتب
+    Route::get('/request-books', [RequestBookController::class, 'index']);
+
+    // قبول طلب رفع كتاب
+    Route::post('/request-books/{id}/accept', [RequestBookController::class, 'accept']);
+
+    // رفض طلب رفع كتاب (تغيير الحالة إلى rejected)
+    Route::post('/request-books/{id}/reject', [RequestBookController::class, 'reject']);
+
+    // ================== 📊 ADMIN STATS ==================
     Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
     Route::get('/stats/total-questions', [AdminController::class, 'totalQuestions']); 
     Route::get('/stats/total-competitions', [AdminController::class, 'totalCompetitions']); 

@@ -14,7 +14,6 @@ class RequestBook extends Model
     protected $fillable = [
         'user_id',
         'title',
-        'author',
         'description',
         'price',
         'book_type',
@@ -24,9 +23,11 @@ class RequestBook extends Model
         'status',
     ];
 
-    // العلاقة مع المستخدم
+    /**
+     * العلاقة مع المستخدم
+     */
     public function user()
     {
-        return $this->belongsTo(ReadingPlatformUser::class, 'user_id');
+        return $this->belongsTo(\App\Models\ReadingPlatformUser::class, 'user_id');
     }
 }
