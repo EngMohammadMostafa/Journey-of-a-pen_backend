@@ -85,11 +85,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
 
     // ================== 📚 REQUEST BOOKS (USER) ==================
-
-    // إرسال طلب رفع كتاب للمنصة
     Route::post('/request-books', [RequestBookController::class, 'store']);
-
-    // عرض جميع الطلبات التي قدمها المستخدم + حالتها (pending / accepted / rejected)
     Route::get('/request-books/my-requests', function (Request $request) {
         return \App\Models\RequestBook::where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
@@ -158,15 +154,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); 
 
     // ================== 📚 REQUEST BOOKS (ADMIN) ==================
-
-    // عرض جميع طلبات رفع الكتب
     Route::get('/request-books', [RequestBookController::class, 'index']);
-
-    // قبول طلب رفع كتاب
     Route::post('/request-books/{id}/accept', [RequestBookController::class, 'accept']);
-
-    // رفض طلب رفع كتاب (تغيير الحالة إلى rejected)
     Route::post('/request-books/{id}/reject', [RequestBookController::class, 'reject']);
+
+    // ✅ إضافة API لتحميل ملف طلب الكتاب للأدمن
+    Route::get('/request-books/{id}/download', [RequestBookController::class, 'downloadFile']);
 
     // ================== 📊 ADMIN STATS ==================
     Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 

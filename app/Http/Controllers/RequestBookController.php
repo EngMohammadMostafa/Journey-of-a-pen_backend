@@ -27,7 +27,6 @@ class RequestBookController extends Controller
      */
     public function store(Request $request)
     {
-        // التحقق من البيانات + رسائل عربية
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:50',
             'description' => 'required|string|max:255',
@@ -42,7 +41,6 @@ class RequestBookController extends Controller
             'file.mimes' => 'الرجاء إرفاق ملف بصيغة PDF فقط',
         ]);
 
-        // تحقق إضافي: إذا الكتاب مدفوع يجب ملء السعر
         if ($request->book_type === 'paid' && is_null($request->price)) {
             return response()->json([
                 'status' => 'error',
@@ -58,11 +56,9 @@ class RequestBookController extends Controller
             ], 422);
         }
 
-        // حفظ الملف مؤقتاً
         $file = $request->file('file');
         $file_path = $file->store('request_books', 'public');
 
-        // إنشاء طلب الكتاب
         $requestBook = RequestBook::create([
             'user_id' => Auth::id(),
             'title' => $request->title,
@@ -72,7 +68,7 @@ class RequestBookController extends Controller
             'file_path' => $file_path,
             'file_type' => $file->getClientOriginalExtension(),
             'file_size' => $file->getSize(),
-            'status' => 'pending', // الحالة الافتراضية
+            'status' => 'pending',
         ]);
 
         return response()->json([
@@ -141,7 +137,6 @@ class RequestBookController extends Controller
     {
         $requestBook = RequestBook::findOrFail($id);
 
-        // حذف الملف المرفوع (اختياري)
         if ($requestBook->file_path && Storage::disk('public')->exists($requestBook->file_path)) {
             Storage::disk('public')->delete($requestBook->file_path);
         }
@@ -154,5 +149,24 @@ class RequestBookController extends Controller
             'status' => 'success',
             'message' => 'تم رفض الطلب.'
         ]);
+    }
+
+    /**
+     * تحميل ملف الكتاب للأدمن لمراجعته قبل اتخاذ القرار
+     */
+    public function downloadFile($id)
+    {
+        $requestBook = RequestBook::findOrFail($id);
+
+        $filePath = $requestBook->file_path;
+
+        if (!$filePath || !Storage::disk('public')->exists($filePath)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'الملف غير موجود'
+            ], 404);
+        }
+
+        return response()->download(storage_path("app/public/{$filePath}"));
     }
 }
