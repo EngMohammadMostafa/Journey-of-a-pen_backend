@@ -16,6 +16,7 @@ use App\Http\Controllers\RepointController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompetitionController;
 use App\Http\Controllers\CompetitionBookController;
+use App\Http\Controllers\NotificationController; // ✅ إضافة NotificationController
 
 /*
 |--------------------------------------------------------------------------
@@ -76,82 +77,76 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ---------- COMPETITIONS (USER) ----------
     Route::get('/competitions', [CompetitionController::class, 'index']); // جميع المسابقات المتاحة
     Route::get('/competitions/{id}/books', [CompetitionBookController::class, 'index']); 
-    // عرض كتب المسابقة للمستخدمين العاديين → فقط الكتب المقبولة (status = accepted)
     Route::post('/competitions/{id}/participate', [CompetitionBookController::class, 'store']); 
-    // رفع كتاب للمسابقة → default status = pending
     Route::post('/competition-books/{id}/like', [CompetitionBookController::class, 'like']); 
     Route::get('/competition-books/{id}/download', [CompetitionBookController::class, 'download']); 
-    // تحميل كتاب → المستخدم يستطيع تحميله فقط إذا كان accepted
 
-    // ================== ADMIN ==================
-    Route::prefix('admin')->middleware('admin')->group(function () {
+    // ---------- NOTIFICATIONS (USER) ----------
+    Route::get('/notifications', [NotificationController::class, 'index']); // عرض جميع الإشعارات للمستخدمين
+});
 
-        // ---------- CATEGORIES ----------
-        Route::post('/categories', [CategoryController::class, 'store']);   
-        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']); 
+// ================== ADMIN ==================
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
 
-        // ---------- BOOKS ----------
-        Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); 
-        Route::put('/books/{id}', [BookController::class, 'update']);                     
-        Route::delete('/books/{id}', [BookController::class, 'destroy']);                
+    // ---------- CATEGORIES ----------
+    Route::post('/categories', [CategoryController::class, 'store']);   
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy']); 
 
-        // ---------- USERS ----------
-        Route::get('/users', [AdminController::class, 'getAllUsers']);       
-        Route::get('/users/{id}', [AdminController::class, 'getUserById']);  
-        Route::post('/users', [AdminController::class, 'createUser']);       
-        Route::put('/users/{id}', [AdminController::class, 'updateUser']);   
-        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); 
+    // ---------- BOOKS ----------
+    Route::post('/categories/{categoryId}/books', [BookController::class, 'store']); 
+    Route::put('/books/{id}', [BookController::class, 'update']);                     
+    Route::delete('/books/{id}', [BookController::class, 'destroy']);                
 
-        // ---------- QUOTES ----------
-        Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); 
+    // ---------- USERS ----------
+    Route::get('/users', [AdminController::class, 'getAllUsers']);       
+    Route::get('/users/{id}', [AdminController::class, 'getUserById']);  
+    Route::post('/users', [AdminController::class, 'createUser']);       
+    Route::put('/users/{id}', [AdminController::class, 'updateUser']);   
+    Route::delete('/users/{id}', [AdminController::class, 'deleteUser']); 
 
-        // ---------- QUESTIONS & ANSWERS ----------
-        Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); 
-        Route::put('/questions/{id}', [QuestionController::class,'update']);          
-        Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       
-        Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
-        Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
-        Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
-        Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
-        Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
-        Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); 
-        Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); 
-        Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); 
-        Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']); 
-        Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); 
-        Route::put('/answers/{id}', [AnswerController::class,'update']); 
-        Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
+    // ---------- QUOTES ----------
+    Route::delete('/quotes/{id}', [QuoteController::class, 'destroy']); 
 
-        // ---------- REWARDS & REPOINTS ----------
-        Route::post('/rewards', [RewardController::class,'store']);   
-        Route::post('/repoints', [RepointController::class,'store']); 
-        Route::get('/repoints', [RepointController::class,'index']);  
+    // ---------- QUESTIONS & ANSWERS ----------
+    Route::post('/books/{bookId}/questions', [QuestionController::class,'store']); 
+    Route::put('/questions/{id}', [QuestionController::class,'update']);          
+    Route::delete('/questions/{id}', [QuestionController::class,'destroy']);       
+    Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
+    Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
+    Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
+    Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
+    Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
+    Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); 
+    Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); 
+    Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); 
+    Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']); 
+    Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); 
+    Route::put('/answers/{id}', [AnswerController::class,'update']); 
+    Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
 
-        // ---------- COMPETITIONS (ADMIN) ----------
-        Route::get('/competitions', [CompetitionController::class, 'adminIndex']); // عرض كل المسابقات
-        Route::post('/competitions', [CompetitionController::class, 'store']); // إنشاء مسابقة جديدة
-        Route::put('/competitions/{id}', [CompetitionController::class, 'update']); // تعديل مسابقة
-        Route::delete('/competitions/{id}', [CompetitionController::class, 'destroy']); // حذف مسابقة
+    // ---------- REWARDS & REPOINTS ----------
+    Route::post('/rewards', [RewardController::class,'store']);   
+    Route::post('/repoints', [RepointController::class,'store']); 
+    Route::get('/repoints', [RepointController::class,'index']);  
 
-        // ⭐ جديد: عرض تفاصيل مسابقة كاملة مع الكتب وأسماء المشاركين
-        // يظهر كل الكتب حتى pending → الأدمن يستطيع قبول أو رفض
-        Route::get('/competitions/{id}/details', [CompetitionBookController::class, 'adminCompetitionDetails']); 
+    // ---------- COMPETITIONS (ADMIN) ----------
+    Route::get('/competitions', [CompetitionController::class, 'adminIndex']); 
+    Route::post('/competitions', [CompetitionController::class, 'store']); 
+    Route::put('/competitions/{id}', [CompetitionController::class, 'update']); 
+    Route::delete('/competitions/{id}', [CompetitionController::class, 'destroy']); 
+    Route::get('/competitions/{id}/details', [CompetitionBookController::class, 'adminCompetitionDetails']); 
+    Route::get('/competition-books/{id}/likes', [CompetitionBookController::class, 'adminBookLikes']); 
+    Route::get('/competitions/{id}/books', [CompetitionBookController::class, 'adminLikes']); 
+    Route::delete('/competition-books/{id}', [CompetitionBookController::class, 'destroy']); 
+    Route::post('/competition-books/{id}/add-to-platform', [CompetitionBookController::class, 'addToPlatform']); 
+    Route::post('/competition-books/{id}/approve-or-reject', [CompetitionBookController::class, 'approveOrReject']); 
 
-        // ⭐ جديد: عرض لايكات كتاب معين (مع أسماء المستخدمين + الحالة)
-        Route::get('/competition-books/{id}/likes', [CompetitionBookController::class, 'adminBookLikes']); 
+    // ---------- NOTIFICATIONS (ADMIN) ----------
+    Route::post('/notifications', [NotificationController::class, 'store']); // إضافة إشعار جديد
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); // حذف إشعار
 
-        // عرض كتب المسابقة مع أسماء المشاركين (قديمة لكن تبقى موجودة)
-        Route::get('/competitions/{id}/books', [CompetitionBookController::class, 'adminLikes']); 
-
-        // ---------- إدارة كتب المسابقة ----------
-        Route::delete('/competition-books/{id}', [CompetitionBookController::class, 'destroy']); // حذف كتاب مشارك
-        Route::post('/competition-books/{id}/add-to-platform', [CompetitionBookController::class, 'addToPlatform']); // إضافة كتاب فائز للمنصة
-        Route::post('/competition-books/{id}/approve-or-reject', [CompetitionBookController::class, 'approveOrReject']); // قبول / رفض كتاب من قبل الأدمن
-
-        // ================== 🔹 NEW: ADMIN STATS APIs ==================
-        Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
-        Route::get('/stats/total-questions', [AdminController::class, 'totalQuestions']); 
-        Route::get('/stats/total-competitions', [AdminController::class, 'totalCompetitions']); 
-        // هذه الـ APIs تعرض أرقام عامة للـ Admin لمتابعة الإحصاءات بسرعة.
-    });
+    // ================== 🔹 NEW: ADMIN STATS APIs ==================
+    Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
+    Route::get('/stats/total-questions', [AdminController::class, 'totalQuestions']); 
+    Route::get('/stats/total-competitions', [AdminController::class, 'totalCompetitions']); 
 });
