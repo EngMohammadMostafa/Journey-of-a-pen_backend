@@ -9,20 +9,18 @@ return new class extends Migration {
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id('notification_id');
+            $table->string('title', 20);
+            $table->string('content', 255);
 
-            $table->string('title', 20);           // عنوان الإشعار
-            $table->string('content', 255);        // محتوى الإشعار
-
-            // الاداري الذي أنشأ الإشعار
-            $table->unsignedBigInteger('created_by');
+            // FK للإداري الذي أنشأ الإشعار
+            $table->unsignedBigInteger('user_id');
 
             $table->timestamps();
 
-            // ربط مع جدول users
-            $table->foreign('created_by')
+            $table->foreign('user_id')
                   ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade'); // إذا حذف الاداري يحذف إشعاراته
+                  ->on('reading_platform_users')
+                  ->onDelete('cascade');
         });
     }
 

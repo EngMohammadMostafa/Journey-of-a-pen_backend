@@ -9,8 +9,10 @@ class Notification extends Model
 {
     use HasFactory;
 
+    // المفتاح الأساسي لجدول الإشعارات
     protected $primaryKey = 'notification_id';
 
+    // الحقول القابلة للملء جماعياً
     protected $fillable = [
         'title',
         'content',
@@ -25,8 +27,8 @@ class Notification extends Model
     {
         return $this->belongsTo(
             ReadingPlatformUser::class,
-            'user_id',
-            'user_id'
+            'user_id', // الحقل في جدول notifications
+            'id'       // المفتاح الأساسي الحقيقي في جدول المستخدمين
         );
     }
 }
