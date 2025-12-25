@@ -143,6 +143,29 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/request-books/{id}/reject', [RequestBookController::class, 'reject']);
     Route::get('/request-books/{id}/download', [RequestBookController::class, 'downloadFile']);
 
+
+     // مسارات عرض الأسئلة للأدمن
+     Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
+     Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
+     Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
+     Route::get('/books/{bookId}/questions', [QuestionController::class, 'adminGetQuestionsOnly']);
+     Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
+     Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); // عرض كل الأسئلة بدون الإجابات
+
+     // إدارة الإجابات للأدمن
+     Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); // كل الإجابات
+     Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); 
+     Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']); 
+     Route::post('/questions/{questionId}/answers', [AnswerController::class,'store']); 
+     Route::put('/answers/{id}', [AnswerController::class,'update']); 
+     Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
+
+     // ---------- NOTIFICATIONS (ADMIN) ----------
+     Route::post('/notifications', [NotificationController::class, 'store']); // إضافة إشعار
+     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); // حذف إشعار
+
+
+
     // ---------- STATS ----------
     Route::get('/stats/total-books', [AdminController::class, 'totalBooks']); 
     Route::get('/stats/total-questions', [AdminController::class, 'totalQuestions']); 
