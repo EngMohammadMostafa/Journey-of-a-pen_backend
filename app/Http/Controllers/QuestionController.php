@@ -237,6 +237,27 @@ class QuestionController extends Controller
             'data' => $questions
         ]);
     }
+    
+
+     /**
+    * عرض سؤال محدد لكتاب معين للـ Admin
+     */
+    public function adminShowQuestionForBook($bookId, $questionId)
+    {
+       // نتحقق من وجود السؤال ضمن الكتاب
+        $question = Question::where('book_id', $bookId)
+             ->with('answers')
+             ->find($questionId);
+
+        if (!$question) {
+        return response()->json(['message' => 'السؤال غير موجود لهذا الكتاب'], 404);
+        }
+         return response()->json([
+        'success' => true,
+        'question' => $question
+       ]);
+    }
+
 
     /**
      * 🔹 API جديد: إرجاع العدد الكلي لكل الأسئلة على المنصة للـ Admin
