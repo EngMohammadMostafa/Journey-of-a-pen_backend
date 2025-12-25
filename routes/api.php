@@ -59,9 +59,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/books/{id}', [BookController::class, 'show']);                     
     Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); 
     Route::get('/me/books', [BookController::class, 'getUserBooks']);              
+
     Route::post('/books/{id}/download', [BookController::class, 'generateDownloadLink']);
     Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
          ->name('books.serveDownload');
+
+    // ✅ جديد: شراء كتاب مدفوع وإضافته لسلة المشتريات
+    Route::post('/books/{id}/purchase', [BookController::class, 'purchaseBook']); 
+    // ✅ جديد: عرض سلة المشتريات (Purchased Books)
+    Route::get('/me/purchased-books', [BookController::class, 'purchasedBooks']); 
 
     // ---------- BOOK QUESTIONS ----------
     Route::get('/books/{bookId}/questions', [QuestionController::class, 'getBookQuestions']);

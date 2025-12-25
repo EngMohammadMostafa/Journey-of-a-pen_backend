@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Book;
 use App\Models\Category;
-use App\Models\Purchase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -100,6 +98,9 @@ class BookController extends Controller
         return $this->show($id);
     }
 
+    /* =========================
+       كتب المستخدم (كتبي الخاصة)
+       ========================= */
     public function getUserBooks(Request $request)
     {
         $user = $request->user();
@@ -118,8 +119,71 @@ class BookController extends Controller
         ]);
     }
 
+    /* =========================
+       سلة المشتريات (الكتب المدفوعة المشتراة)
+       ========================= */
+    public function purchasedBooks(Request $request)
+    {
+        $user = $request->user();
+
+        $books = DB::table('book_user')
+            ->join('books', 'book_user.book_id', '=', 'books.id')
+            ->where('book_user.user_id', $user->id)
+            ->where('book_user.owned', 1)
+            ->where('books.book_type', 'paid') // فقط المدفوعة
+            ->select('books.*')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'books' => $books
+        ]);
+    }
+
+    /* =========================
+       شراء الكتب المدفوعة
+       ========================= */
+    public function purchaseBook(Request $request, $bookId)
+    {
+        $user = $request->user();
+        $book = Book::find($bookId);
+
+        if (!$book) {
+            return response()->json(['message' => 'الكتاب غير موجود'], 404);
+        }
+
+        if ($book->book_type !== 'paid') {
+            return response()->json(['message' => 'هذا الكتاب مجاني، لا حاجة للشراء'], 400);
+        }
+
+        // تحقق إذا كان المستخدم يملك الكتاب مسبقاً
+        $existing = DB::table('book_user')
+            ->where('book_id', $book->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing && $existing->owned == 1) {
+            return response()->json(['message' => 'لقد اشتريت هذا الكتاب مسبقاً'], 400);
+        }
+
+        // إضافة الكتاب مباشرة في book_user مع owned = 1
+        DB::table('book_user')->insert([
+            'user_id' => $user->id,
+            'book_id' => $book->id,
+            'owned' => 1,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تمت عملية شراء الكتاب بنجاح وتم إضافته إلى سلة المشتريات وكتبي الخاصة',
+            'book' => $book
+        ]);
+    }
+
     /* =====================================================
-       🔴 إضافة كتاب للمنصة
+       إضافة كتاب للمنصة
        ===================================================== */
     public function store(Request $request, $categoryId)
     {
@@ -145,13 +209,11 @@ class BookController extends Controller
 
         // تحديد مصدر الملف
         if ($request->hasFile('file')) {
-            // حالة رفع ملف جديد من الأدمن
             $file = $request->file('file');
             $path = $file->store('books');
             $fileType = $file->extension();
             $fileSize = $file->getSize();
         } elseif ($request->competition_book_id) {
-            // حالة استخدام كتاب من المسابقة
             $competitionBook = DB::table('competition_books')
                 ->where('competition_book_id', $request->competition_book_id)
                 ->first();
