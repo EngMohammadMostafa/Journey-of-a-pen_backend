@@ -153,6 +153,11 @@ class BookController extends Controller
             'updated_at' => now()
         ]);
 
+        // 🔹 تحديث عدد المشتريات عند المستخدم فقط عند شراء كتاب مدفوع
+        DB::table('reading_platform_users')
+            ->where('id', $user->id)
+            ->increment('purchases_count');
+
         return response()->json([
             'success' => true,
             'message' => 'تم شراء الكتاب بنجاح',
@@ -184,7 +189,7 @@ class BookController extends Controller
     }
 
     /* =========================
-       بحث الكتب (جزئي، insensitive case، يدعم العربية والإنجليزية)
+       بحث الكتب
        ========================= */
     public function searchBooks(Request $request)
     {
@@ -197,7 +202,6 @@ class BookController extends Controller
             ], 400);
         }
 
-        // البحث الجزئي، يدعم العربية والإنجليزية، غير حساس لحالة الأحرف
         $books = Book::with('category')
             ->where(function ($q) use ($query) {
                 $q->whereRaw('title LIKE ? COLLATE utf8mb4_unicode_ci', ["%{$query}%"])
@@ -211,9 +215,9 @@ class BookController extends Controller
         ]);
     }
 
-    /* =====================================================
+    /* =========================
        Like / Unlike (Toggle)
-       ===================================================== */
+       ========================= */
     public function toggleLike(Request $request, $bookId)
     {
         $user = $request->user();
