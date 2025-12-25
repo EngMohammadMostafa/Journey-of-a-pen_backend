@@ -144,7 +144,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::get('/request-books/{id}/download', [RequestBookController::class, 'downloadFile']);
 
 
-     // مسارات عرض الأسئلة للأدمن
+    // مسارات عرض الأسئلة للأدمن
      Route::get('/books/{bookId}/questions-with-answers', [QuestionController::class, 'adminGetBookQuestionsWithAnswers']);
      Route::get('/books/{bookId}/questions-with-correct-answers', [QuestionController::class, 'adminGetBookQuestionsWithCorrectAnswers']);
      Route::get('/books/{bookId}/questions/{questionId}', [QuestionController::class, 'adminShowQuestionForBook']);
@@ -152,7 +152,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
      Route::get('/questions/{id}', [QuestionController::class, 'adminShowQuestion']);
      Route::get('/questions', [QuestionController::class, 'adminGetAllQuestions']); // عرض كل الأسئلة بدون الإجابات
 
-     // إدارة الإجابات للأدمن
+    // إدارة الإجابات للأدمن
      Route::get('/answers', [AnswerController::class, 'adminGetAllAnswers']); // كل الإجابات
      Route::get('/questions/{questionId}/answers', [AnswerController::class, 'adminGetAnswersByQuestion']); 
      Route::get('/answers/{id}', [AnswerController::class, 'adminShowAnswer']); 
@@ -160,12 +160,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
      Route::put('/answers/{id}', [AnswerController::class,'update']); 
      Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
 
-     // ---------- NOTIFICATIONS (ADMIN) ----------
+    // ---------- NOTIFICATIONS (ADMIN) ----------
      Route::post('/notifications', [NotificationController::class, 'store']); // إضافة إشعار
      Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); // حذف إشعار
 
-      // ---------- COMPETITION BOOKS (ADMIN) ----------
-    // تفاصيل كتب المسابقة للأدمن
+     // ---------- COMPETITION BOOKS (ADMIN) ----------
+     // تفاصيل كتب المسابقة للأدمن
     Route::get('/competitions/{competition_id}/details', [CompetitionBookController::class, 'adminCompetitionDetails']);
 
     // عرض لايكات كتاب معين
