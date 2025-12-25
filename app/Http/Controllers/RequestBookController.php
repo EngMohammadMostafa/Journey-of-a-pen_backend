@@ -13,17 +13,7 @@ use Illuminate\Support\Facades\Validator;
 class RequestBookController extends Controller
 {
     /**
-     * عرض نموذج تقديم طلب الكتاب للمستخدم (ليس ضروري في API)
-     */
-    public function create()
-    {
-        return response()->json([
-            'message' => 'هذه النقطة مخصصة للـ Web وليس API'
-        ]);
-    }
-
-    /**
-     * تخزين طلب الكتاب المرسل من المستخدم
+     * تخزين طلب الكتاب
      */
     public function store(Request $request)
     {
@@ -32,32 +22,26 @@ class RequestBookController extends Controller
             'description' => 'required|string|max:255',
             'book_type' => 'required|in:free,paid',
             'price' => 'nullable|integer|min:0',
-            'file' => 'required|file|mimes:pdf|max:20480', // PDF فقط
-        ], [
-            'title.required' => 'الرجاء إدخال عنوان الكتاب',
-            'description.required' => 'الرجاء إدخال وصف الكتاب',
-            'book_type.required' => 'الرجاء اختيار نوع الكتاب',
-            'file.required' => 'الرجاء إرفاق ملف الكتاب',
-            'file.mimes' => 'الرجاء إرفاق ملف بصيغة PDF فقط',
+            'file' => 'required|file|mimes:pdf|max:20480',
         ]);
 
-        if ($request->book_type === 'paid' && is_null($request->price)) {
+        if ($request->book_type === 'paid' && $request->price === null) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'الرجاء إدخال سعر الكتاب لأنه مدفوع'
+                'message' => 'سعر الكتاب مطلوب لأنه مدفوع'
             ], 422);
         }
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'فشل التحقق من البيانات',
                 'errors' => $validator->errors()
             ], 422);
         }
 
+        // ✅ تخزين الملف داخل public
         $file = $request->file('file');
-        $file_path = $file->store('request_books', 'public');
+        $filePath = $file->store('request_books', 'public');
 
         $requestBook = RequestBook::create([
             'user_id' => Auth::id(),
@@ -65,7 +49,7 @@ class RequestBookController extends Controller
             'description' => $request->description,
             'book_type' => $request->book_type,
             'price' => $request->price ?? 0,
-            'file_path' => $file_path,
+            'file_path' => $filePath,
             'file_type' => $file->getClientOriginalExtension(),
             'file_size' => $file->getSize(),
             'status' => 'pending',
@@ -73,28 +57,23 @@ class RequestBookController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم إرسال طلب إضافة الكتاب بنجاح، بانتظار مراجعة الإدارة.',
             'request_book' => $requestBook
         ], 201);
     }
 
     /**
-     * عرض جميع الطلبات للأدمن
+     * عرض الطلبات للأدمن
      */
     public function index()
     {
-        $requests = RequestBook::orderBy('created_at', 'desc')->get();
-        $categories = Category::all();
-
         return response()->json([
-            'status' => 'success',
-            'requests' => $requests,
-            'categories' => $categories
+            'requests' => RequestBook::latest()->get(),
+            'categories' => Category::all()
         ]);
     }
 
     /**
-     * قبول الطلب من قبل الأدمن
+     * قبول الطلب
      */
     public function accept(Request $request, $id)
     {
@@ -102,8 +81,7 @@ class RequestBookController extends Controller
 
         if (!$request->category_id) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'الرجاء اختيار قسم للكتاب.'
+                'message' => 'يجب اختيار قسم'
             ], 422);
         }
 
@@ -119,54 +97,52 @@ class RequestBookController extends Controller
             'file_size' => $requestBook->file_size,
         ]);
 
-        $requestBook->update([
-            'status' => 'accepted',
-        ]);
+        $requestBook->update(['status' => 'accepted']);
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'تمت الموافقة على الطلب وإضافة الكتاب إلى المنصة.',
+            'message' => 'تم قبول الطلب',
             'book' => $book
         ]);
     }
 
     /**
-     * رفض الطلب من قبل الأدمن
+     * رفض الطلب
      */
     public function reject($id)
     {
         $requestBook = RequestBook::findOrFail($id);
 
+        // ✅ حذف الملف من public
         if ($requestBook->file_path && Storage::disk('public')->exists($requestBook->file_path)) {
             Storage::disk('public')->delete($requestBook->file_path);
         }
 
-        $requestBook->update([
-            'status' => 'rejected',
-        ]);
+        $requestBook->update(['status' => 'rejected']);
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'تم رفض الطلب.'
+            'message' => 'تم رفض الطلب'
         ]);
     }
 
     /**
-     * تحميل ملف الكتاب للأدمن لمراجعته قبل اتخاذ القرار
+     * تحميل ملف الطلب (للأدمن)
      */
     public function downloadFile($id)
     {
         $requestBook = RequestBook::findOrFail($id);
 
-        $filePath = $requestBook->file_path;
-
-        if (!$filePath || !Storage::disk('public')->exists($filePath)) {
+        if (
+            !$requestBook->file_path ||
+            !Storage::disk('public')->exists($requestBook->file_path)
+        ) {
             return response()->json([
-                'status' => 'error',
                 'message' => 'الملف غير موجود'
             ], 404);
         }
 
-        return response()->download(storage_path("app/public/{$filePath}"));
+        // ✅ المسار الصحيح
+        return response()->download(
+            storage_path('app/public/' . $requestBook->file_path)
+        );
     }
 }

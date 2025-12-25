@@ -47,7 +47,7 @@ class BookController extends Controller
     {
         $books = Book::with('category')->get();
 
-        $booksArray = $books->map(function($book) {
+        $booksArray = $books->map(function ($book) {
             return [
                 'id' => $book->id,
                 'title' => $book->title,
@@ -99,7 +99,7 @@ class BookController extends Controller
     }
 
     /* =========================
-       كتب المستخدم (كتبي الخاصة)
+       كتب المستخدم
        ========================= */
     public function getUserBooks(Request $request)
     {
@@ -112,27 +112,6 @@ class BookController extends Controller
             ->toArray();
 
         $books = Book::whereIn('id', $owned)->get();
-
-        return response()->json([
-            'success' => true,
-            'books' => $books
-        ]);
-    }
-
-    /* =========================
-       سلة المشتريات (الكتب المدفوعة المشتراة)
-       ========================= */
-    public function purchasedBooks(Request $request)
-    {
-        $user = $request->user();
-
-        $books = DB::table('book_user')
-            ->join('books', 'book_user.book_id', '=', 'books.id')
-            ->where('book_user.user_id', $user->id)
-            ->where('book_user.owned', 1)
-            ->where('books.book_type', 'paid')
-            ->select('books.*')
-            ->get();
 
         return response()->json([
             'success' => true,
@@ -165,7 +144,6 @@ class BookController extends Controller
             return response()->json(['message' => 'لقد اشتريت هذا الكتاب مسبقاً'], 400);
         }
 
-        // إضافة الكتاب في book_user مع owned = 1 و liked = 0
         DB::table('book_user')->insert([
             'user_id' => $user->id,
             'book_id' => $book->id,
@@ -177,13 +155,36 @@ class BookController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تمت عملية شراء الكتاب بنجاح وتم إضافته إلى سلة المشتريات وكتبي الخاصة',
+            'message' => 'تم شراء الكتاب بنجاح',
             'book' => $book
         ]);
     }
 
+    /* =========================
+       دالة جديدة: استرجاع الكتب المدفوعة المشتراة فقط
+       ========================= */
+    public function purchasedBooks(Request $request)
+    {
+        $user = $request->user();
+
+        $bookIds = DB::table('book_user')
+            ->join('books', 'book_user.book_id', '=', 'books.id')
+            ->where('book_user.user_id', $user->id)
+            ->where('book_user.owned', 1)
+            ->where('books.book_type', 'paid') // فقط المدفوعة
+            ->pluck('book_user.book_id')
+            ->toArray();
+
+        $books = Book::whereIn('id', $bookIds)->get();
+
+        return response()->json([
+            'success' => true,
+            'books' => $books
+        ]);
+    }
+
     /* =====================================================
-       Like / Unlike الكتب (Toggle API)
+       Like / Unlike (Toggle)
        ===================================================== */
     public function toggleLike(Request $request, $bookId)
     {
@@ -194,48 +195,51 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        // تحقق إذا كان المستخدم يمتلك الكتاب وحمله
         $pivot = DB::table('book_user')
             ->where('book_id', $book->id)
             ->where('user_id', $user->id)
             ->first();
 
         if (!$pivot || !$pivot->owned || !$pivot->downloaded_at) {
+            if ($book->book_type === 'paid' && (!$pivot || !$pivot->owned)) {
+                $message = 'يجب شراء الكتاب وتحميله أولاً';
+            } else {
+                $message = 'يجب تحميل الكتاب أولاً';
+            }
+
             return response()->json([
-                'message' => 'يجب أن تمتلك الكتاب وأن تكون قد حملته قبل الإعجاب'
+                'message' => $message
             ], 403);
         }
 
-        // Toggle like
         $newLiked = $pivot->liked ? 0 : 1;
+
         DB::table('book_user')
             ->where('book_id', $book->id)
             ->where('user_id', $user->id)
             ->update(['liked' => $newLiked]);
 
-        // تحديث العدد الكلي للايكات
         $likesCount = DB::table('book_user')
             ->where('book_id', $book->id)
             ->where('liked', 1)
             ->count();
 
-        $book->number_of_likes = $likesCount;
-        $book->save();
+        $book->update(['number_of_likes' => $likesCount]);
 
         return response()->json([
             'success' => true,
-            'liked' => $newLiked,
+            'liked' => (bool)$newLiked,
             'likes_count' => $likesCount
         ]);
     }
 
-    /* =====================================================
+    /* =========================
        إضافة كتاب للمنصة
-       ===================================================== */
+       ========================= */
     public function store(Request $request, $categoryId)
     {
         $category = Category::find($categoryId);
-        if (! $category) {
+        if (!$category) {
             return response()->json(['message' => 'القسم غير موجود'], 404);
         }
 
@@ -263,7 +267,7 @@ class BookController extends Controller
                 ->where('competition_book_id', $request->competition_book_id)
                 ->first();
 
-            if (! $competitionBook) {
+            if (!$competitionBook) {
                 return response()->json(['message' => 'كتاب المسابقة غير موجود'], 404);
             }
 
@@ -296,7 +300,7 @@ class BookController extends Controller
     }
 
     /* =========================
-       التحميل
+       التحميل مع تسجيل التحميل
        ========================= */
     public function generateDownloadLink(Request $request, $id)
     {
@@ -307,15 +311,24 @@ class BookController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        if ($book->book_type === 'paid') {
-            $pivot = DB::table('book_user')
-                ->where('book_id', $book->id)
-                ->where('user_id', $user->id)
-                ->first();
+        $pivot = DB::table('book_user')
+            ->where('book_id', $book->id)
+            ->where('user_id', $user->id)
+            ->first();
 
-            if (!$pivot || !$pivot->owned) {
-                return response()->json(['message' => 'يجب الحصول على امتلاك الكتاب أولاً'], 403);
-            }
+        if ($book->book_type === 'paid' && (!$pivot || !$pivot->owned)) {
+            return response()->json(['message' => 'يجب شراء الكتاب أولاً'], 403);
+        }
+
+        if (!$pivot) {
+            DB::table('book_user')->insert([
+                'user_id' => $user->id,
+                'book_id' => $book->id,
+                'owned' => 1,
+                'liked' => 0,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
         }
 
         $signedUrl = URL::temporarySignedRoute(
@@ -332,14 +345,22 @@ class BookController extends Controller
 
     public function serveDownload(Request $request, $id, $userId)
     {
-        if (! $request->hasValidSignature()) {
+        if (!$request->hasValidSignature()) {
             return response()->json(['message' => 'الرابط غير صالح'], 403);
         }
 
-        $book = Book::find($id);
-        $filePath = storage_path('app/' . $book->file_path);
+        DB::table('book_user')
+            ->where('book_id', $id)
+            ->where('user_id', $userId)
+            ->update(['downloaded_at' => now()]);
 
-        return response()->file($filePath);
+        $book = Book::find($id);
+
+        if (Storage::disk('public')->exists($book->file_path)) {
+            return Storage::disk('public')->download($book->file_path);
+        }
+
+        return response()->file(storage_path('app/' . $book->file_path));
     }
 
     /* =========================
@@ -353,7 +374,7 @@ class BookController extends Controller
         }
 
         $book->update(
-            $request->only(['title','author','description','price','book_type','category_id'])
+            $request->only(['title', 'author', 'description', 'price', 'book_type', 'category_id'])
         );
 
         return response()->json([
@@ -380,15 +401,13 @@ class BookController extends Controller
     }
 
     /* =========================
-       🔹 API جديد: العدد الكلي للكتب للـ Admin
+       عدد الكتب (Admin)
        ========================= */
     public function adminGetTotalBooks()
     {
-        $total = Book::count();
-
         return response()->json([
             'success' => true,
-            'total_books' => $total
+            'total_books' => Book::count()
         ]);
     }
 }

@@ -97,8 +97,8 @@ class ReadingPlatformUser extends Authenticatable
                 $book->save();
             }
 
-            // 3️⃣ حذف طلبات الكتب المعلقة أو المرفوضة فقط
-            $user->requestBooks()->whereIn('status', ['pending', 'rejected'])->delete();
+            // 3️⃣ حذف **كل** طلبات المستخدم بدون تصنيف الحالة
+            $user->requestBooks()->delete();
         });
     }
 }
