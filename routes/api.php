@@ -164,6 +164,21 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
      Route::post('/notifications', [NotificationController::class, 'store']); // إضافة إشعار
      Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']); // حذف إشعار
 
+      // ---------- COMPETITION BOOKS (ADMIN) ----------
+    // تفاصيل كتب المسابقة للأدمن
+    Route::get('/competitions/{competition_id}/details', [CompetitionBookController::class, 'adminCompetitionDetails']);
+
+    // عرض لايكات كتاب معين
+    Route::get('/competition-books/{competition_book_id}/likes', [CompetitionBookController::class, 'adminBookLikes']);
+
+    // قبول / رفض كتاب
+    Route::post('/competition-books/{competition_book_id}/approve-or-reject', [CompetitionBookController::class, 'approveOrReject']);
+
+    // إضافة كتاب من المسابقة للمنصة
+    Route::post('/competition-books/{competition_book_id}/add-to-platform', [CompetitionBookController::class, 'addToPlatform']);
+
+    // حذف كتاب من المسابقة
+    Route::delete('/competition-books/{competition_book_id}', [CompetitionBookController::class, 'destroy']);
 
 
     // ---------- STATS ----------
