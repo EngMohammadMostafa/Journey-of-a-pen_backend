@@ -17,7 +17,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompetitionController;
 use App\Http\Controllers\CompetitionBookController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\RequestBookController; // ✅ إضافة Controller طلبات الكتب
+use App\Http\Controllers\RequestBookController; // ✅ Controller طلبات الكتب
 
 /*
 |--------------------------------------------------------------------------
@@ -64,9 +64,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/books/{id}/serve-download/{userId}', [BookController::class, 'serveDownload'])
          ->name('books.serveDownload');
 
-    // ✅ جديد: شراء كتاب مدفوع وإضافته لسلة المشتريات
+    // ✅ شراء كتاب مدفوع وإضافته لسلة المشتريات
     Route::post('/books/{id}/purchase', [BookController::class, 'purchaseBook']); 
-    // ✅ جديد: عرض سلة المشتريات (Purchased Books)
+    // ✅ عرض سلة المشتريات (Purchased Books)
     Route::get('/me/purchased-books', [BookController::class, 'purchasedBooks']); 
 
     // ---------- BOOK QUESTIONS ----------
@@ -76,9 +76,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/books/{bookId}/session/submit', [UserBookAnswerController::class,'submitAnswers']);
     Route::post('/books/{bookId}/session/exit', [UserBookAnswerController::class,'exitSession']);
 
-    // ---------- REWARDS ----------
-    Route::get('/rewards', [RewardController::class,'index']);         
-    Route::post('/rewards/{id}/redeem', [RewardController::class,'redeem']); 
+    
 
     // ---------- COMPETITIONS (USER) ----------
     Route::get('/competitions', [CompetitionController::class, 'index']);
@@ -97,6 +95,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
             ->orderBy('created_at', 'desc')
             ->get();
     });
+
+    // ================== 📌 API Like / Unlike للكتب ==================
+    // عند استدعاء هذا الـ API:
+    // إذا كان المستخدم قد أعجب مسبقًا بالكتاب سيتم إلغاء الإعجاب،
+    // وإذا لم يكن أعجب به سيتم تسجيل إعجاب جديد.
+    Route::post('/books/{id}/toggle-like', [BookController::class, 'toggleLike']);
 });
 
 // ================== ADMIN ==================
@@ -138,10 +142,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::put('/answers/{id}', [AnswerController::class,'update']); 
     Route::delete('/answers/{id}', [AnswerController::class,'destroy']); 
 
-    // ---------- REWARDS & REPOINTS ----------
-    Route::post('/rewards', [RewardController::class,'store']);   
-    Route::post('/repoints', [RepointController::class,'store']); 
-    Route::get('/repoints', [RepointController::class,'index']);  
+    
 
     // ---------- COMPETITIONS (ADMIN) ----------
     Route::get('/competitions', [CompetitionController::class, 'adminIndex']); 
@@ -164,7 +165,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/request-books/{id}/accept', [RequestBookController::class, 'accept']);
     Route::post('/request-books/{id}/reject', [RequestBookController::class, 'reject']);
 
-    // ✅ إضافة API لتحميل ملف طلب الكتاب للأدمن
+    // ✅ تحميل ملف طلب الكتاب للأدمن
     Route::get('/request-books/{id}/download', [RequestBookController::class, 'downloadFile']);
 
     // ================== 📊 ADMIN STATS ==================

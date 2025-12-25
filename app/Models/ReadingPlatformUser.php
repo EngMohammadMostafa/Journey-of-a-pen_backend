@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\DB;
 
 class ReadingPlatformUser extends Authenticatable
 {
@@ -67,10 +68,37 @@ class ReadingPlatformUser extends Authenticatable
 
     /**
      * العلاقة مع جدول طلبات رفع الكتب (RequestBook)
-     * المستخدم الواحد يمكنه تقديم عدة طلبات
      */
     public function requestBooks()
     {
         return $this->hasMany(RequestBook::class, 'user_id');
+    }
+
+    /**
+     * Boot method لحذف البيانات المرتبطة عند حذف المستخدم
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($user) {
+            // 1️⃣ حذف جميع الأجوبة المرتبطة بالمستخدم
+            \App\Models\UserBookAnswer::where('user_id', $user->id)->delete();
+
+            // 2️⃣ إعادة حساب likes لكل كتاب تأثر
+            $books = $user->books()->get();
+            foreach ($books as $book) {
+                // حذف السجل من جدول الوسيط قبل إعادة الحساب
+                $user->books()->detach($book->id);
+
+                // إعادة حساب عدد اللايكات
+                $likes = $book->users()->wherePivot('liked', true)->count();
+                $book->number_of_likes = $likes;
+                $book->save();
+            }
+
+            // 3️⃣ حذف طلبات الكتب المعلقة أو المرفوضة فقط
+            $user->requestBooks()->whereIn('status', ['pending', 'rejected'])->delete();
+        });
     }
 }
