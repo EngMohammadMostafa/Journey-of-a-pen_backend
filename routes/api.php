@@ -59,6 +59,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/books/{id}/with-likes', [BookController::class, 'getBookWithLikes']); 
     Route::get('/me/books', [BookController::class, 'getUserBooks']);              
 
+    // ---------- BOOK SEARCH (جديد) ----------
+    // البحث عن الكتب حسب العنوان أو اسم المؤلف
+    Route::get('/books/search', [BookController::class, 'searchBooks']); 
+
     // إنشاء رابط تحميل (محمي بالتوكن)
     Route::post('/books/{id}/download', [BookController::class, 'generateDownloadLink']);
 

@@ -161,7 +161,7 @@ class BookController extends Controller
     }
 
     /* =========================
-       دالة جديدة: استرجاع الكتب المدفوعة المشتراة فقط
+       استرجاع الكتب المدفوعة المشتراة فقط
        ========================= */
     public function purchasedBooks(Request $request)
     {
@@ -171,11 +171,39 @@ class BookController extends Controller
             ->join('books', 'book_user.book_id', '=', 'books.id')
             ->where('book_user.user_id', $user->id)
             ->where('book_user.owned', 1)
-            ->where('books.book_type', 'paid') // فقط المدفوعة
+            ->where('books.book_type', 'paid')
             ->pluck('book_user.book_id')
             ->toArray();
 
         $books = Book::whereIn('id', $bookIds)->get();
+
+        return response()->json([
+            'success' => true,
+            'books' => $books
+        ]);
+    }
+
+    /* =========================
+       بحث الكتب (جزئي، insensitive case، يدعم العربية والإنجليزية)
+       ========================= */
+    public function searchBooks(Request $request)
+    {
+        $query = $request->query('q');
+
+        if (!$query) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى إدخال نص للبحث'
+            ], 400);
+        }
+
+        // البحث الجزئي، يدعم العربية والإنجليزية، غير حساس لحالة الأحرف
+        $books = Book::with('category')
+            ->where(function ($q) use ($query) {
+                $q->whereRaw('title LIKE ? COLLATE utf8mb4_unicode_ci', ["%{$query}%"])
+                  ->orWhereRaw('author LIKE ? COLLATE utf8mb4_unicode_ci', ["%{$query}%"]);
+            })
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -201,15 +229,11 @@ class BookController extends Controller
             ->first();
 
         if (!$pivot || !$pivot->owned || !$pivot->downloaded_at) {
-            if ($book->book_type === 'paid' && (!$pivot || !$pivot->owned)) {
-                $message = 'يجب شراء الكتاب وتحميله أولاً';
-            } else {
-                $message = 'يجب تحميل الكتاب أولاً';
-            }
+            $message = ($book->book_type === 'paid' && (!$pivot || !$pivot->owned))
+                ? 'يجب شراء الكتاب وتحميله أولاً'
+                : 'يجب تحميل الكتاب أولاً';
 
-            return response()->json([
-                'message' => $message
-            ], 403);
+            return response()->json(['message' => $message], 403);
         }
 
         $newLiked = $pivot->liked ? 0 : 1;
@@ -275,9 +299,7 @@ class BookController extends Controller
             $fileType = $competitionBook->file_type;
             $fileSize = $competitionBook->file_size;
         } else {
-            return response()->json([
-                'message' => 'يجب رفع ملف أو اختيار كتاب من المسابقة'
-            ], 422);
+            return response()->json(['message' => 'يجب رفع ملف أو اختيار كتاب من المسابقة'], 422);
         }
 
         $book = Book::create([
