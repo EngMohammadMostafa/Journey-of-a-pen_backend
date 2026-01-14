@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\URL;
 
 class BookController extends Controller
 {
-    /* =========================
-       الأقسام
-       ========================= */
+    
     public function getCategories()
     {
         $categories = Category::with('books')->get();
@@ -40,9 +38,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       عرض الكتب
-       ========================= */
+   
     public function index()
     {
         $books = Book::with('category')->get();
@@ -98,9 +94,7 @@ class BookController extends Controller
         return $this->show($id);
     }
 
-    /* =========================
-       كتب المستخدم
-       ========================= */
+    
     public function getUserBooks(Request $request)
     {
         $user = $request->user();
@@ -119,9 +113,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       شراء الكتب المدفوعة
-       ========================= */
+    
     public function purchaseBook(Request $request, $bookId)
     {
         $user = $request->user();
@@ -153,7 +145,7 @@ class BookController extends Controller
             'updated_at' => now()
         ]);
 
-        // 🔹 تحديث عدد المشتريات عند المستخدم فقط عند شراء كتاب مدفوع
+       
         DB::table('reading_platform_users')
             ->where('id', $user->id)
             ->increment('purchases_count');
@@ -165,9 +157,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       استرجاع الكتب المدفوعة المشتراة فقط
-       ========================= */
+    
     public function purchasedBooks(Request $request)
     {
         $user = $request->user();
@@ -188,9 +178,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       بحث الكتب
-       ========================= */
+    
     public function searchBooks(Request $request)
     {
         $query = $request->query('q');
@@ -215,9 +203,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       Like / Unlike (Toggle)
-       ========================= */
+    
     public function toggleLike(Request $request, $bookId)
     {
         $user = $request->user();
@@ -261,9 +247,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       إضافة كتاب للمنصة
-       ========================= */
+    
     public function store(Request $request, $categoryId)
     {
         $category = Category::find($categoryId);
@@ -325,9 +309,7 @@ class BookController extends Controller
         ], 201);
     }
 
-    /* =========================
-       التحميل مع تسجيل التحميل
-       ========================= */
+    
     public function generateDownloadLink(Request $request, $id)
     {
         $user = $request->user();
@@ -389,9 +371,7 @@ class BookController extends Controller
         return response()->file(storage_path('app/' . $book->file_path));
     }
 
-    /* =========================
-       تحديث / حذف
-       ========================= */
+    
     public function update(Request $request, $id)
     {
         $book = Book::find($id);
@@ -426,9 +406,7 @@ class BookController extends Controller
         ]);
     }
 
-    /* =========================
-       عدد الكتب (Admin)
-       ========================= */
+    
     public function adminGetTotalBooks()
     {
         return response()->json([

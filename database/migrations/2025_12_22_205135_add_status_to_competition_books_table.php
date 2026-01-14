@@ -9,11 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('competition_books', function (Blueprint $table) {
-            /**
-             * status:
-             * pending  => بانتظار موافقة الأدمن
-             * accepted => تم قبول الكتاب ونشره في المسابقة
-             */
+            
             $table->enum('status', ['pending', 'accepted'])
                   ->default('pending')
                   ->after('likes_count');

@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\Validator;
 
 class RequestBookController extends Controller
 {
-    /**
-     * تخزين طلب الكتاب
-     */
+    
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -39,7 +37,7 @@ class RequestBookController extends Controller
             ], 422);
         }
 
-        // ✅ تخزين الملف داخل public
+       
         $file = $request->file('file');
         $filePath = $file->store('request_books', 'public');
 
@@ -61,9 +59,7 @@ class RequestBookController extends Controller
         ], 201);
     }
 
-    /**
-     * عرض الطلبات للأدمن
-     */
+    
     public function index()
     {
         return response()->json([
@@ -72,9 +68,7 @@ class RequestBookController extends Controller
         ]);
     }
 
-    /**
-     * قبول الطلب
-     */
+    
     public function accept(Request $request, $id)
     {
         $requestBook = RequestBook::findOrFail($id);
@@ -105,14 +99,12 @@ class RequestBookController extends Controller
         ]);
     }
 
-    /**
-     * رفض الطلب
-     */
+    
     public function reject($id)
     {
         $requestBook = RequestBook::findOrFail($id);
 
-        // ✅ حذف الملف من public
+        
         if ($requestBook->file_path && Storage::disk('public')->exists($requestBook->file_path)) {
             Storage::disk('public')->delete($requestBook->file_path);
         }
@@ -124,9 +116,7 @@ class RequestBookController extends Controller
         ]);
     }
 
-    /**
-     * تحميل ملف الطلب (للأدمن)
-     */
+    
     public function downloadFile($id)
     {
         $requestBook = RequestBook::findOrFail($id);
@@ -140,7 +130,7 @@ class RequestBookController extends Controller
             ], 404);
         }
 
-        // ✅ المسار الصحيح
+       
         return response()->download(
             storage_path('app/public/' . $requestBook->file_path)
         );

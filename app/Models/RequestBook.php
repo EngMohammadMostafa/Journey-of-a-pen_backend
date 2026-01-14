@@ -11,7 +11,7 @@ class RequestBook extends Model
 
     protected $table = 'request_books';
 
-    // تحديد العمود الأساسي الصحيح
+  
     protected $primaryKey = 'request_id';
 
     protected $fillable = [
@@ -26,9 +26,7 @@ class RequestBook extends Model
         'status',
     ];
 
-    /**
-     * العلاقة مع المستخدم
-     */
+   
     public function user()
     {
         return $this->belongsTo(\App\Models\ReadingPlatformUser::class, 'user_id');

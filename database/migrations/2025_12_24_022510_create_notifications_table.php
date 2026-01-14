@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->string('title', 20);
             $table->string('content', 255);
 
-            // FK للإداري الذي أنشأ الإشعار
+           
             $table->unsignedBigInteger('user_id');
 
             $table->timestamps();

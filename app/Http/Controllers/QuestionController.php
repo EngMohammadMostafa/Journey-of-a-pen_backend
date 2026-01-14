@@ -14,9 +14,7 @@ use App\Http\Resources\QuestionResource;
 
 class QuestionController extends Controller
 {
-    /**
-     * عرض أسئلة كتاب محدد للمستخدم
-     */
+    
     public function getBookQuestions($bookId)
     {
         $user = Auth::user();
@@ -26,13 +24,13 @@ class QuestionController extends Controller
             return response()->json(['message' => 'الكتاب غير موجود'], 404);
         }
 
-        // التحقق من امتلاك المستخدم للكتاب
+       
         $owns = $user->books()->where('books.id', $bookId)->exists();
         if (!$owns) {
             return response()->json(['message' => 'لا يمكنك الوصول إلى الأسئلة قبل تحميل/شراء الكتاب'], 403);
         }
 
-        // التحقق إذا أجاب المستخدم على الأسئلة مسبقًا
+       
         $alreadyAnswered = UserBookAnswer::where('user_id', $user->id)
             ->where('book_id', $bookId)
             ->where('completed', true)
@@ -54,9 +52,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * إضافة سؤال جديد لكتاب
-     */
+   
     public function store(Request $request, $bookId)
     {
         $book = Book::find($bookId);
@@ -79,9 +75,7 @@ class QuestionController extends Controller
         ], 201);
     }
 
-    /**
-     * تعديل سؤال
-     */
+  
     public function update(Request $request, $id)
     {
         $question = Question::find($id);
@@ -102,9 +96,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * حذف سؤال وجميع إجاباته
-     */
+  
     public function destroy($id)
     {
         $question = Question::find($id);
@@ -112,7 +104,7 @@ class QuestionController extends Controller
             return response()->json(['message' => 'السؤال غير موجود'], 404);
         }
 
-        // حذف جميع الإجابات المرتبطة
+        
         $question->answers()->delete();
 
         $question->delete();
@@ -123,9 +115,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * عرض جميع الأسئلة مع إجاباتها للـ Admin
-     */
+    
     public function adminGetBookQuestionsWithAnswers($bookId)
     {
         $book = Book::find($bookId);
@@ -144,9 +134,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * عرض الأسئلة مع الإجابة الصحيحة فقط للـ Admin
-     */
+    
     public function adminGetBookQuestionsWithCorrectAnswers($bookId)
     {
         $book = Book::find($bookId);
@@ -165,17 +153,13 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * تسجيل الإجابات (موجود مسبقًا)
-     */
+   
     public function submitAnswers(Request $request, $bookId)
     {
         // ... دالة موجودة مسبقًا
     }
 
-    /**
-     * عرض الأسئلة فقط (بدون إجابات) للـ Admin
-     */
+    
     public function adminGetQuestionsOnly($bookId)
     {
         $book = Book::find($bookId);
@@ -195,9 +179,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * عرض سؤال محدد مع الإجابات للـ Admin
-     */
+    
     public function adminShowQuestion($id)
     {
         $question = Question::with('answers')->find($id);
@@ -211,9 +193,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    /**
-     * عرض جميع الأسئلة مع Pagination للـ Admin
-     */
+    
     public function adminGetAllQuestions(Request $request)
     {
         $query = Question::query();
@@ -239,12 +219,10 @@ class QuestionController extends Controller
     }
     
 
-     /**
-    * عرض سؤال محدد لكتاب معين للـ Admin
-     */
+    
     public function adminShowQuestionForBook($bookId, $questionId)
     {
-       // نتحقق من وجود السؤال ضمن الكتاب
+       
         $question = Question::where('book_id', $bookId)
              ->with('answers')
              ->find($questionId);
@@ -259,9 +237,7 @@ class QuestionController extends Controller
     }
 
 
-    /**
-     * 🔹 API جديد: إرجاع العدد الكلي لكل الأسئلة على المنصة للـ Admin
-     */
+   
     public function adminGetTotalQuestions()
     {
         $total = Question::count();

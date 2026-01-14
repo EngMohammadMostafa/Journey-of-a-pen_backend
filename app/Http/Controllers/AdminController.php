@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
-    /**
-     * عرض جميع المستخدمين
-     */
+   
     public function getAllUsers()
     {
         $users = ReadingPlatformUser::select(
@@ -27,9 +25,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * عرض مستخدم معين حسب الـ ID
-     */
+    
     public function getUserById($id)
     {
         $user = ReadingPlatformUser::select(
@@ -49,9 +45,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * إنشاء مستخدم جديد
-     */
+   
     public function createUser(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -76,7 +70,7 @@ class AdminController extends Controller
             'password' => Hash::make($request->password),
             'age' => $request->age,
             'gender' => $request->gender,
-            'user_type' => 1, // افتراضي مستخدم عادي
+            'user_type' => 1, 
             'points' => 0,
             'purchases_count' => 0
         ]);
@@ -97,9 +91,7 @@ class AdminController extends Controller
         ], 201);
     }
 
-    /**
-     * تعديل بيانات مستخدم
-     */
+    
     public function updateUser(Request $request, $id)
     {
         $user = ReadingPlatformUser::find($id);
@@ -143,9 +135,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * حذف مستخدم
-     */
+   
     public function deleteUser($id)
     {
         $user = ReadingPlatformUser::find($id);
@@ -153,7 +143,7 @@ class AdminController extends Controller
             return response()->json(['message' => 'المستخدم غير موجود'], 404);
         }
 
-        // منع حذف الأدمن الرئيسي
+        
         if ($user->user_type == 2) {
             return response()->json(['message' => 'لا يمكن حذف الأدمن الرئيسي'], 403);
         }
@@ -166,13 +156,7 @@ class AdminController extends Controller
         ]);
     }
 
-    // =========================
-    // 🔹 دوال إحصاءات عامة للـ Admin
-    // =========================
-
-    /**
-     * عدد الكتب الكلي
-     */
+    
     public function totalBooks()
     {
         $total = Book::count();
@@ -183,9 +167,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * عدد الأسئلة الكلي
-     */
+   
     public function totalQuestions()
     {
         $total = Question::count();
@@ -196,9 +178,7 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * عدد المسابقات الكلي
-     */
+    
     public function totalCompetitions()
     {
         $total = Competition::count();

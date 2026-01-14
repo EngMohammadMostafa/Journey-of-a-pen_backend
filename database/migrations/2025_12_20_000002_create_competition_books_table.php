@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('competition_books', function (Blueprint $table) {
-            $table->bigIncrements('competition_book_id'); // PK + auto increment
+            $table->bigIncrements('competition_book_id'); 
 
             $table->foreignId('competition_id')
                   ->constrained('competitions')

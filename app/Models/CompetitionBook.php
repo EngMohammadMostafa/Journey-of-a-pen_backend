@@ -12,10 +12,7 @@ class CompetitionBook extends Model
 
     protected $primaryKey = 'competition_book_id';
 
-    /**
-     * الحقول المسموح تعبئتها
-     * أضفنا status لدعم نظام الموافقة من الأدمن
-     */
+    
     protected $fillable = [
         'competition_id',
         'user_id',
@@ -27,25 +24,19 @@ class CompetitionBook extends Model
         'status', // pending | accepted
     ];
 
-    /**
-     * كتاب المسابقة ينتمي إلى مسابقة واحدة
-     */
+    
     public function competition()
     {
         return $this->belongsTo(Competition::class);
     }
 
-    /**
-     * صاحب الكتاب (المستخدم الذي رفعه)
-     */
+  
     public function owner()
     {
         return $this->belongsTo(ReadingPlatformUser::class, 'user_id');
     }
 
-    /**
-     * المستخدمون الذين وضعوا لايك على الكتاب
-     */
+    
     public function likedUsers()
     {
         return $this->belongsToMany(

@@ -11,10 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 class CompetitionBookController extends Controller
 {
-    /**
-     * رفع كتاب للمسابقة
-     * ✅ فقط للمستخدم العادي
-     */
+   
     public function store(Request $request, $competitionId)
     {
         $user = $request->user();
@@ -23,7 +20,7 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'غير مصرح'], 403);
         }
 
-        // تحقق من صحة البيانات
+        
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'file'  => 'required|file|mimes:pdf|max:10240',
@@ -42,7 +39,7 @@ class CompetitionBookController extends Controller
             ], 422);
         }
 
-        // تحقق من المسابقة
+       
         $competition = Competition::find($competitionId);
         if (
             !$competition ||
@@ -53,20 +50,20 @@ class CompetitionBookController extends Controller
             return response()->json(['message' => 'المسابقة غير متاحة'], 403);
         }
 
-        // تحقق من العدد الأقصى للمشاركين
+       
         $currentCount = CompetitionBook::where('competition_id', $competitionId)->count();
         if ($currentCount >= $competition->max_user) {
             return response()->json(['message' => 'عدد المشاركين مكتمل'], 403);
         }
 
-        // تحقق من مشاركة سابقة
+        
         if (CompetitionBook::where('competition_id', $competitionId)
             ->where('user_id', $user->id)
             ->exists()) {
             return response()->json(['message' => 'لقد شاركت مسبقًا في هذه المسابقة'], 409);
         }
 
-        // رفع الملف وتخزينه
+       
         $uploadedFile = $request->file('file');
         $path = $uploadedFile->store('competition_books');
 
@@ -78,7 +75,7 @@ class CompetitionBookController extends Controller
             'file_type'      => 'pdf',
             'file_size'      => $uploadedFile->getSize(),
             'likes_count'    => 0,
-            'status'         => 'pending', // تلقائيًا ينتظر مراجعة الإدارة
+            'status'         => 'pending', 
         ]);
 
         return response()->json([
@@ -87,9 +84,7 @@ class CompetitionBookController extends Controller
         ], 201);
     }
 
-    /**
-     * عرض الكتب المقبولة للمستخدم
-     */
+    
     public function index($competitionId)
     {
         $competition = Competition::findOrFail($competitionId);
@@ -106,9 +101,7 @@ class CompetitionBookController extends Controller
         ]);
     }
 
-    /**
-     * لايك / إلغاء لايك على كتاب
-     */
+   
     public function like(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
@@ -137,9 +130,7 @@ class CompetitionBookController extends Controller
         ]);
     }
 
-    /**
-     * تحميل كتاب
-     */
+   
     public function download(Request $request, $id)
     {
         $book = CompetitionBook::findOrFail($id);
@@ -154,9 +145,7 @@ class CompetitionBookController extends Controller
         );
     }
 
-    /**
-     * تفاصيل المسابقة للأدمن
-     */
+    
     public function adminCompetitionDetails(Request $request, $competitionId)
     {
         if ($request->user()->user_type != 2) {
@@ -176,9 +165,7 @@ class CompetitionBookController extends Controller
         ]);
     }
 
-    /**
-     * قبول / رفض كتاب
-     */
+    
     public function approveOrReject(Request $request, $bookId)
     {
         if ($request->user()->user_type != 2) {
@@ -212,9 +199,7 @@ class CompetitionBookController extends Controller
         ]);
     }
 
-    /**
-     * عرض عدد اللايكات ومعلومات المستخدمين الذين أعجبوا بالكتاب للأدمن
-     */
+    
     public function adminBookLikes(Request $request, $bookId)
     {
         if ($request->user()->user_type != 2) {
@@ -231,9 +216,7 @@ class CompetitionBookController extends Controller
         ]);
     }
 
-    /**
-     * حذف كتاب مشارك من المسابقة مع حذف اللايكات المرتبطة به فقط
-     */
+    
     public function destroy(Request $request, $bookId)
     {
         if ($request->user()->user_type != 2) {
@@ -242,16 +225,16 @@ class CompetitionBookController extends Controller
 
         $book = CompetitionBook::with('likedUsers')->findOrFail($bookId);
 
-        // حذف جميع اللايكات لهذا الكتاب فقط
+        
         $book->likedUsers()->detach();
 
-        // حذف الملف
+        
         Storage::delete($book->file_path);
 
-        // حذف السجل من قاعدة البيانات
+       
         $book->delete();
 
-        // إعادة ترتيب الكتب المتبقية حسب likes_count تنازليًا
+       
         $competitionId = $book->competition_id;
         $books = CompetitionBook::where('competition_id', $competitionId)
                     ->orderByDesc('likes_count')
@@ -263,10 +246,7 @@ class CompetitionBookController extends Controller
         ]);
     }
 
-    /**
-     * ⭐ جديد: إضافة كتاب مقبول من المسابقة إلى كتب المنصة
-     * فقط للأدمن
-     */
+    
     public function addToPlatform(Request $request, $bookId)
     {
         if ($request->user()->user_type != 2) {
@@ -284,14 +264,14 @@ class CompetitionBookController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // جلب الكتاب من المسابقة
+      
         $competitionBook = CompetitionBook::findOrFail($bookId);
 
         if ($competitionBook->status !== 'accepted') {
             return response()->json(['message' => 'لا يمكن إضافة كتاب غير مقبول للمنصة'], 403);
         }
 
-        // إنشاء الكتاب في المنصة باستخدام بيانات المسابقة + بيانات الأدمن
+        
         $book = Book::create([
             'title'       => $competitionBook->title,
             'author'      => $competitionBook->owner->username ?? 'غير معروف',
